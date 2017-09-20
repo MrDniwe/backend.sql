@@ -1,0 +1,7 @@
+{
+  "name": "cache.db",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Sergey Belevskiy",
+  "license": "MIT"
+}
