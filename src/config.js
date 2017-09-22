@@ -1,7 +1,9 @@
 module.exports = {
-  rethink: {
+  postgres: {
     host: process.env.DB_HOST || "localhost",
-    port: process.env.DB_PORT || 28115,
-    db: process.env.DB_NAME || "evotor_db_cache"
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || "cache",
+    user: process.env.DB_USERNAME || "cache",
+    password: process.env.DB_PASSWORD || "cache"
   }
 };

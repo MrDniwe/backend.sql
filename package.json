@@ -9,8 +9,8 @@
     "cote": "^0.15.1",
     "lodash": "^4.17.4",
     "moment": "^2.18.1",
-    "ramda": "^0.24.1",
-    "rethinkdb": "^2.3.3"
+    "pg-promise": "^6.8.0",
+    "ramda": "^0.24.1"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
