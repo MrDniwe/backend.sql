@@ -8,7 +8,13 @@ if (process.env.COTE_NETWORK === "local") {
   cote = coteBase;
 }
 
-module.exports = new cote.Responder({
-  name: "RESPONDER: cache DB",
-  key: "cacheDB"
-});
+module.exports = {
+  dbResponder: new cote.Responder({
+    name: "RESPONDER: cache DB",
+    key: "cacheDB"
+  }),
+  remoteRequester: new cote.Requester({
+    name: "REQUESTER: remote data requester",
+    key: "remote"
+  })
+};
