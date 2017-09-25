@@ -78,11 +78,12 @@ cote.dbResponder.on("upsertClient", req => {
         return Promise.all([
           Promise.resolve(client),
           storesModel.upsertMany(stores),
-          employeesModel.upsertMany(employees),
-          storeEmployeesModel.upsertMany(storeEmployees)
-        ]);
+          employeesModel.upsertMany(employees)
+        ])
+          .then(() => storeEmployeesModel.upsertMany(storeEmployees))
+          .then(() => Promise.resolve(client));
       })
-      .spread(client =>
+      .then(client =>
         Promise.all([
           Promise.resolve(client),
           cote.remoteRequester.send({
