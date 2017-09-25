@@ -3,7 +3,13 @@ const db = require("./db");
 const Promise = require("bluebird");
 const _ = require("lodash");
 
-const app = {};
+const Stores = require("./models/stores");
+const Employees = require("./models/employees");
+const StoreEmployees = require("./models/store_employees");
+
+const storesModel = new Stores();
+const employeesModel = new Employees();
+const storeEmployeesModel = new StoreEmployees();
 
 cote.dbResponder.on("upsertClient", req => {
   return new Promise((resolve, reject) => {
@@ -12,6 +18,7 @@ cote.dbResponder.on("upsertClient", req => {
     if (!req.payload.token) return reject("Отсутствует app token клиента");
     req.payload.id = _.trim(req.payload.id);
     req.payload.token = _.trim(req.payload.token);
+    //TODO этот кусок кода нужно переписать в формате on conflict do update
     db
       .oneOrNone("select * from clients where id=${id};", req.payload)
       .then(foundClient => {
@@ -77,55 +84,36 @@ cote.dbResponder.on("upsertClient", req => {
         ])
       )
       .spread((client, stores, employees) => {
+        let storeEmployees = _.flatten(_.map(employees, "storeEmployees"));
         return Promise.all([
-          db.tx(transaction =>
-            Promise.map(stores, store =>
-              transaction.none(
-                `insert into stores 
-                  (uuid, client_id, title, address) 
-                values 
-                  ($[uuid], $[client_id], $[title], $[address]) 
-                on conflict (uuid) do update
-                  set title=$[title], 
-                  address=$[address], 
-                  updated=current_timestamp`,
-                store
-              )
-            ).then(queries => transaction.batch(queries))
-          ),
-          db.tx(transaction =>
-            Promise.map(employees, employee =>
-              transaction.none(
-                `insert into employees 
-                  (uuid, client_id, first_name, middle_name, last_name, phone) 
-                values 
-                  ($[uuid], $[client_id], $[first_name], $[middle_name], $[last_name], $[phone]) 
-                on conflict (uuid) do update
-                  set first_name=$[first_name], 
-                  middle_name=$[middle_name], 
-                  last_name=$[last_name], 
-                  phone=$[phone], 
-                  updated=current_timestamp`,
-                employee
-              )
-            ).then(queries => transaction.batch(queries))
-          ),
-          db.tx(transaction => {
-            let storeEmployees = _.flatten(_.map(employees, "storeEmployees"));
-            return Promise.map(storeEmployees, storeEmployee =>
-              transaction.none(
-                `insert into store_employees 
-                  (store_uuid, employee_uuid) 
-                values 
-                  ($[store_uuid], $[employee_uuid]) 
-                on conflict do nothing`,
-                storeEmployee
-              )
-            );
-          })
+          Promise.resolve(client),
+          storesModel.upsertMany(stores),
+          employeesModel.upsertMany(employees),
+          storeEmployeesModel.upsertMany(storeEmployees)
         ]);
       })
+      .catch(console.error)
       .then(resolve)
       .catch(reject);
+    // .spread(client =>
+    //   db
+    //     .many("select * from stores where client_id=$[id]", client)
+    //     .then(stores =>
+    //       Promise.each(store, store =>
+    //         Promise.all([
+    //           cote.remoteRequester.send({
+    //             type: "getCommodities",
+    //             token: client.token,
+    //             store: store.uuid
+    //           }),
+    //           cote.remoteRequester.send({
+    //             type: "getDevices",
+    //             token: client.token,
+    //             store: store.uuid
+    //           })
+    //         ])
+    //       )
+    //     )
+    // )
   });
 });
