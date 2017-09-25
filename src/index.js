@@ -17,6 +17,14 @@ const storeEmployeesModel = new StoreEmployees();
 const devicesModel = new Devices();
 const commoditiesModel = new Commodities();
 
+cote.dbResponder.on("clearClientsRelations", req => {
+  if (!req.payload)
+    return Promise.reject(new Error("Отсутствуют данные для запроса"));
+  if (!req.payload.id)
+    return Promise.reject(new Error("Отсутствует ID клиента"));
+  return clientsModel.clearRelations(req.payload.id);
+});
+
 cote.dbResponder.on("upsertClient", req => {
   return new Promise((resolve, reject) => {
     if (!req.payload) return reject("Отсутствуют данные клиента");

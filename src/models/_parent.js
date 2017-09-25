@@ -11,7 +11,9 @@ module.exports = class Stores {
   upsertMany(items) {
     if (!this.queries.upsert)
       return Promise.reject(
-        `Не имплементирован SQL-запрос upsert для класса ${this.className}`
+        new Error(
+          `Не имплементирован SQL-запрос upsert для класса ${this.className}`
+        )
       );
     return db.tx(transaction =>
       Promise.map(items, item =>
@@ -23,7 +25,9 @@ module.exports = class Stores {
   upsertOne(item) {
     if (!this.queries.upsert)
       return Promise.reject(
-        `Не имплементирован SQL-запрос upsert для класса ${this.className}`
+        new Error(
+          `Не имплементирован SQL-запрос upsert для класса ${this.className}`
+        )
       );
     return db.none(this.queries.upsert, item).then(() => this.getById(item.id));
   }
@@ -31,7 +35,9 @@ module.exports = class Stores {
   getById(id) {
     if (!this.queries.upsert)
       return Promise.reject(
-        `Не имплементирован SQL-запрос getById для класса ${this.className}`
+        new Error(
+          `Не имплементирован SQL-запрос getById для класса ${this.className}`
+        )
       );
     return db.one(this.queries.getById, id);
   }
