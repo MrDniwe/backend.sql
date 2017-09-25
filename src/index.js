@@ -3,10 +3,12 @@ const db = require("./db");
 const Promise = require("bluebird");
 const _ = require("lodash");
 
+const Clients = require("./models/clients");
 const Stores = require("./models/stores");
 const Employees = require("./models/employees");
 const StoreEmployees = require("./models/store_employees");
 
+const clientsModel = new Clients();
 const storesModel = new Stores();
 const employeesModel = new Employees();
 const storeEmployeesModel = new StoreEmployees();
@@ -18,32 +20,8 @@ cote.dbResponder.on("upsertClient", req => {
     if (!req.payload.token) return reject("Отсутствует app token клиента");
     req.payload.id = _.trim(req.payload.id);
     req.payload.token = _.trim(req.payload.token);
-    //TODO этот кусок кода нужно переписать в формате on conflict do update
-    db
-      .oneOrNone("select * from clients where id=${id};", req.payload)
-      .then(foundClient => {
-        if (!foundClient || _.isEmpty(foundClient)) {
-          return db
-            .none(
-              "insert into clients (id, token) values (${id}, ${token});",
-              req.payload
-            )
-            .then(() =>
-              db.one("select * from clients where id=${id};", req.payload)
-            );
-        } else {
-          if (foundClient.token !== req.payload.token)
-            return db
-              .none(
-                "update clients set token=${token}, updated = current_timestamp where id=${id}",
-                req.payload
-              )
-              .then(() =>
-                db.one("select * from clients where id=${id};", req.payload)
-              );
-          else return Promise.resolve(foundClient);
-        }
-      })
+    clientsModel
+      .upsertOne(req.payload)
       .then(client =>
         Promise.all([
           Promise.resolve(client),
@@ -92,28 +70,25 @@ cote.dbResponder.on("upsertClient", req => {
           storeEmployeesModel.upsertMany(storeEmployees)
         ]);
       })
+      .spread(client =>
+        storesModel.getClientStores(client.id).then(stores =>
+          Promise.map(stores, store =>
+            Promise.all([
+              cote.remoteRequester.send({
+                type: "getStoreCommodities",
+                token: client.token,
+                storeUuid: store.uuid
+              }),
+              cote.remoteRequester.send({
+                type: "getDevices",
+                token: client.token
+              })
+            ])
+          )
+        )
+      )
       .catch(console.error)
       .then(resolve)
       .catch(reject);
-    // .spread(client =>
-    //   db
-    //     .many("select * from stores where client_id=$[id]", client)
-    //     .then(stores =>
-    //       Promise.each(store, store =>
-    //         Promise.all([
-    //           cote.remoteRequester.send({
-    //             type: "getCommodities",
-    //             token: client.token,
-    //             store: store.uuid
-    //           }),
-    //           cote.remoteRequester.send({
-    //             type: "getDevices",
-    //             token: client.token,
-    //             store: store.uuid
-    //           })
-    //         ])
-    //       )
-    //     )
-    // )
   });
 });

@@ -1,13 +1,11 @@
-const db = require("../db");
-const Promise = require("bluebird");
-const _ = require("lodash");
 const Parent = require("./_parent");
+const db = require("../db");
 
 module.exports = class Stores extends Parent {
   constructor() {
     super();
     this.className = "Stores";
-    this.queries.upsertMany = `insert into stores 
+    this.queries.upsert = `insert into stores
           (uuid, client_id, title, address) 
         values 
           ($[uuid], $[client_id], $[title], $[address]) 
@@ -15,5 +13,8 @@ module.exports = class Stores extends Parent {
           set title=$[title], 
           address=$[address], 
           updated=current_timestamp`;
+  }
+  getClientStores(clientId) {
+    return db.many("select * from stores where client_id=$1", clientId);
   }
 };
