@@ -46,3 +46,21 @@ create table devices (
     created timestamp with time zone default current_timestamp,
     updated timestamp with time zone default current_timestamp
 );
+create type doctype as enum ('session', 'sell', 'fprint');
+create table stores_loaded_days (
+    uuid uuid primary key,
+    store_uuid uuid not null references stores (uuid) on delete cascade,
+    loaded_day date not null,
+    document_type doctype not null,
+    created timestamp with time zone default current_timestamp,
+    updated timestamp with time zone default current_timestamp
+);
+create table sessions (
+    uuid uuid primary key,
+    device_uuid uuid references devices (uuid) on delete cascade,
+    employee_uuid uuid references employees (uuid) on delete cascade,
+    open_time timestamp with time zone not null,
+    close_time timestamp with time zone not null,
+    created timestamp with time zone default current_timestamp,
+    updated timestamp with time zone default current_timestamp
+);
