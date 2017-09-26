@@ -126,22 +126,16 @@ cote.dbResponder.on("loadSessions", req => {
     })
     .then(stores => {
       //с недостающими делаем удаленный запрос, в случае ошибки не крошимся
-      return Promise.map(stores, store =>
-        daysModel
-          .onlyLoadedDays(
-            store.uuid,
-            "session",
-            _.map(req.payload.days, day => moment(day).format("YYYY-MM-DD"))
-          )
+      return Promise.map(stores, store => {
+        let preparedPayload = _.map(req.payload.days, day =>
+          moment(day).format("YYYY-MM-DD")
+        );
+        return daysModel
+          .onlyLoadedDays(store.uuid, "session", preparedPayload)
           .then(allreadyLoaded =>
             _.map(allreadyLoaded, day => moment(day).utc().format("YYYY-MM-DD"))
           )
-          .then(momented =>
-            _.difference(
-              _.map(req.payload.days, day => moment(day).format("YYYY-MM-DD")),
-              momented
-            )
-          )
+          .then(momented => _.difference(preparedPayload, momented))
           .then(daysToLoad =>
             cote.remoteRequester
               .send({
@@ -153,8 +147,8 @@ cote.dbResponder.on("loadSessions", req => {
               .then(days =>
                 Promise.resolve({ storeUuid: store.uuid, days: days })
               )
-          )
-      );
+          );
+      });
     })
     .then(storesDaysDocs => {
       return Promise.each(storesDaysDocs, storeDaysDocs => {
@@ -188,8 +182,4 @@ cote.dbResponder.on("loadSessions", req => {
       });
     })
     .catch(console.error);
-  // .then(() => {
-  //   //делаем транзакцию по добавлению сессий дня, в случае успеха - создаем инстанс дня, помечаем сегодняшний как временный,
-  //   //в случае ошибки не крошимся
-  // });
 });
