@@ -1,5 +1,6 @@
 const Parent = require("./_parent");
 const db = require("../db");
+const Promise = require("bluebird");
 
 module.exports = class Stores extends Parent {
   constructor() {
@@ -14,7 +15,15 @@ module.exports = class Stores extends Parent {
           address=$[address], 
           updated=current_timestamp`;
   }
-  getClientStores(clientId) {
+  static getClientStores(clientId) {
     return db.many("select * from stores where client_id=$1", clientId);
+  }
+  static prepareRequestedStores(stores, client) {
+    return Promise.map(stores, store => ({
+      uuid: store.uuid,
+      client_id: client.id,
+      title: store.name,
+      address: store.address
+    }));
   }
 };

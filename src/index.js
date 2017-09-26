@@ -1,14 +1,17 @@
 const cote = require("./cote");
-const db = require("./db");
 const Promise = require("bluebird");
 const _ = require("lodash");
+const moment = require("moment");
 
 const Clients = require("./models/clients");
 const Stores = require("./models/stores");
 const Employees = require("./models/employees");
 const Devices = require("./models/devices");
 const Commodities = require("./models/commodities");
+const Sessions = require("./models/sessions");
+const Days = require("./models/days");
 const StoreEmployees = require("./models/store_employees");
+const constraints = require("./constraints");
 
 const clientsModel = new Clients();
 const storesModel = new Stores();
@@ -16,116 +19,168 @@ const employeesModel = new Employees();
 const storeEmployeesModel = new StoreEmployees();
 const devicesModel = new Devices();
 const commoditiesModel = new Commodities();
+const sessionsModel = new Sessions();
+const daysModel = new Days();
 
 cote.dbResponder.on("clearClientsRelations", req => {
-  if (!req.payload)
-    return Promise.reject(new Error("Отсутствуют данные для запроса"));
-  if (!req.payload.id)
-    return Promise.reject(new Error("Отсутствует ID клиента"));
-  return clientsModel.clearRelations(req.payload.id);
+  Promise.all([
+    constraints.payloadPresents(req),
+    constraints.clientIdPresents(req)
+  ]).then(() => clientsModel.clearRelations(req.payload.id));
 });
 
 cote.dbResponder.on("upsertClient", req => {
-  return new Promise((resolve, reject) => {
-    if (!req.payload) return reject("Отсутствуют данные клиента");
-    if (!req.payload.id) return reject("Отсутствует ID клиента");
-    if (!req.payload.token) return reject("Отсутствует app token клиента");
-    req.payload.id = _.trim(req.payload.id);
-    req.payload.token = _.trim(req.payload.token);
-    clientsModel
-      .upsertOne(req.payload)
-      .then(client =>
-        Promise.all([
-          Promise.resolve(client),
-          cote.remoteRequester.send({
-            type: "getStores",
-            token: client.token
-          }),
-          cote.remoteRequester.send({
-            type: "getEmployees",
-            token: client.token
-          })
-        ])
-      )
-      .spread((client, stores, employees) =>
-        Promise.all([
-          Promise.resolve(client),
-          Promise.map(stores, store => ({
-            uuid: store.uuid,
-            client_id: client.id,
-            title: store.name,
-            address: store.address
-          })),
-          Promise.map(employees, employee => {
-            let employeePrepared = {
-              uuid: employee.uuid,
-              client_id: client.id,
-              first_name: employee.name,
-              middle_name: employee.patronymicName,
-              last_name: employee.lastName,
-              phone: employee.phone
-            };
-            employeePrepared.storeEmployees = _.map(employee.stores, store => ({
-              store_uuid: store.storeUuid,
-              employee_uuid: employee.uuid
-            }));
-            return Promise.resolve(employeePrepared);
-          })
-        ])
-      )
-      .spread((client, stores, employees) => {
-        let storeEmployees = _.flatten(_.map(employees, "storeEmployees"));
-        return Promise.all([
-          Promise.resolve(client),
-          storesModel.upsertMany(stores),
-          employeesModel.upsertMany(employees)
-        ])
-          .then(() => storeEmployeesModel.upsertMany(storeEmployees))
-          .then(() => Promise.resolve(client));
+  return Promise.all([
+    constraints.payloadPresents(req),
+    constraints.clientIdPresents(req),
+    constraints.tokenPresents(req)
+  ])
+    .then(() => {
+      req.payload.id = _.trim(req.payload.id);
+      req.payload.token = _.trim(req.payload.token);
+    })
+    .then(() => clientsModel.upsertOne(req.payload))
+    .then(client =>
+      Promise.all([
+        Promise.resolve(client),
+        cote.remoteRequester.send({
+          type: "getStores",
+          token: client.token
+        }),
+        cote.remoteRequester.send({
+          type: "getEmployees",
+          token: client.token
+        })
+      ])
+    )
+    .spread((client, stores, employees) =>
+      Promise.all([
+        Promise.resolve(client),
+        Stores.prepareRequestedStores(stores, client),
+        Employees.prepareRequestedEmployees(employees, client)
+      ])
+    )
+    .spread((client, stores, employees) => {
+      let storeEmployees = _.flatten(_.map(employees, "storeEmployees"));
+      return Promise.all([
+        Promise.resolve(client),
+        storesModel.upsertMany(stores),
+        employeesModel.upsertMany(employees)
+      ])
+        .then(() => storeEmployeesModel.upsertMany(storeEmployees))
+        .then(() => Promise.resolve(client));
+    })
+    .then(client =>
+      Promise.all([
+        Promise.resolve(client),
+        cote.remoteRequester.send({
+          type: "getDevices",
+          token: client.token
+        }),
+        Stores.getClientStores(client.id).then(stores =>
+          Promise.map(stores, store =>
+            cote.remoteRequester.send({
+              type: "getStoreCommodities",
+              token: client.token,
+              storeUuid: store.uuid
+            })
+          )
+        )
+      ])
+    )
+    .spread((client, devices, storeCommodities) =>
+      Promise.all([
+        Promise.resolve(client),
+        Promise.map(devices, device => ({
+          uuid: device.uuid,
+          store_uuid: device.storeUuid,
+          title: device.name,
+          timezone_offset: device.timezoneOffset
+        })).then(devicesPrepared => devicesModel.upsertMany(devicesPrepared)),
+        Promise.each(storeCommodities, commodities =>
+          Promise.map(commodities, commodity => ({
+            uuid: commodity.uuid,
+            store_uuid: commodity.storeUuid,
+            title: commodity.name,
+            description: commodity.description,
+            cost: commodity.costPrice,
+            price: commodity.price
+          })).then(commoditiesPrepared =>
+            commoditiesModel.upsertMany(commoditiesPrepared)
+          )
+        )
+      ])
+    )
+    .catch(console.error);
+});
+
+cote.dbResponder.on("loadSessions", req => {
+  return (
+    Promise.all([
+      constraints.payloadPresents(req),
+      constraints.clientIdPresents(req),
+      constraints.tokenPresents(req)
+    ])
+      .then(() => {
+        // реквестируем из БД магазины клиента
+        return Stores.getClientStores(req.payload.id);
       })
-      .then(client =>
-        Promise.all([
-          Promise.resolve(client),
-          cote.remoteRequester.send({
-            type: "getDevices",
-            token: client.token
-          }),
-          storesModel.getClientStores(client.id).then(stores =>
-            Promise.map(stores, store =>
-              cote.remoteRequester.send({
-                type: "getStoreCommodities",
-                token: client.token,
-                storeUuid: store.uuid
+      // .then(() => {
+      //   //реквестируем список дней из базы соответствующий переданному, для временных дней считаем что они не загружены
+      // })
+      // .then(() => {
+      //   //вычитаем из переданных дней имеющиеся
+      // })
+      .then(stores => {
+        //с недостающими делаем удаленный запрос, в случае ошибки не крошимся
+        return Promise.map(stores, store =>
+          cote.remoteRequester
+            .send({
+              type: "getSessionsByDays",
+              token: req.payload.token,
+              storeUuid: store.uuid,
+              days: req.payload.days
+            })
+            .then(days =>
+              Promise.resolve({ storeUuid: store.uuid, days: days })
+            )
+        );
+      })
+      .then(storesDaysDocs => {
+        return Promise.each(storesDaysDocs, storeDaysDocs => {
+          let onlySuccessesDays = _.filter(storeDaysDocs.days, "success");
+          return Promise.map(onlySuccessesDays, dayDocs =>
+            daysModel
+              .upsertOne({
+                store_uuid: storeDaysDocs.storeUuid,
+                loaded_day: moment(dayDocs.day).utc().format("YYYY-MM-DD"),
+                document_type: "session"
               })
-            )
-          )
-        ])
-      )
-      .spread((client, devices, storeCommodities) =>
-        Promise.all([
-          Promise.resolve(client),
-          Promise.map(devices, device => ({
-            uuid: device.uuid,
-            store_uuid: device.storeUuid,
-            title: device.name,
-            timezone_offset: device.timezoneOffset
-          })).then(devicesPrepared => devicesModel.upsertMany(devicesPrepared)),
-          Promise.each(storeCommodities, commodities =>
-            Promise.map(commodities, commodity => ({
-              uuid: commodity.uuid,
-              store_uuid: commodity.storeUuid,
-              title: commodity.name,
-              description: commodity.description,
-              cost: commodity.costPrice,
-              price: commodity.price
-            })).then(commoditiesPrepared =>
-              commoditiesModel.upsertMany(commoditiesPrepared)
-            )
-          )
-        ])
-      )
+              .then(loadedDay =>
+                Sessions.prepareRequestedSessions(dayDocs.documents, loadedDay)
+                  .then(preparedSessions =>
+                    sessionsModel.upsertMany(preparedSessions)
+                  )
+                  .catch(err => {
+                    console.error(err);
+                    daysModel
+                      .deleteByUuid(loadedDay.uuid)
+                      .then(() =>
+                        Promise.reject(
+                          new Error(
+                            `Не удалось сохранить сессии для дня ${loadedDay.loaded_day}`
+                          )
+                        )
+                      );
+                  })
+              )
+          );
+        });
+      })
       .catch(console.error)
-      .then(resolve)
-      .catch(reject);
-  });
+  );
+  // .then(() => {
+  //   //делаем транзакцию по добавлению сессий дня, в случае успеха - создаем инстанс дня, помечаем сегодняшний как временный,
+  //   //в случае ошибки не крошимся
+  // });
 });

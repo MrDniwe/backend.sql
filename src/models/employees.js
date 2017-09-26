@@ -1,4 +1,6 @@
 const Parent = require("./_parent");
+const Promise = require("bluebird");
+const _ = require("lodash");
 
 module.exports = class Stores extends Parent {
   constructor() {
@@ -14,5 +16,22 @@ module.exports = class Stores extends Parent {
           last_name=$[last_name], 
           phone=$[phone], 
           updated=current_timestamp`;
+  }
+  static prepareRequestedEmployees(employees, client) {
+    return Promise.map(employees, employee => {
+      let employeePrepared = {
+        uuid: employee.uuid,
+        client_id: client.id,
+        first_name: employee.name,
+        middle_name: employee.patronymicName,
+        last_name: employee.lastName,
+        phone: employee.phone
+      };
+      employeePrepared.storeEmployees = _.map(employee.stores, store => ({
+        store_uuid: store.storeUuid,
+        employee_uuid: employee.uuid
+      }));
+      return Promise.resolve(employeePrepared);
+    });
   }
 };

@@ -33,7 +33,7 @@ module.exports = class Stores {
   }
 
   getById(id) {
-    if (!this.queries.upsert)
+    if (!this.queries.getById)
       return Promise.reject(
         new Error(
           `Не имплементирован SQL-запрос getById для класса ${this.className}`
