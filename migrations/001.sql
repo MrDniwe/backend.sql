@@ -54,6 +54,7 @@ create table loaded_days (
     store_uuid uuid not null references stores (uuid) on delete cascade,
     loaded_day date not null,
     document_type doctype not null,
+    is_temporary boolean default false,
     created timestamp with time zone default current_timestamp,
     updated timestamp with time zone default current_timestamp
 );
