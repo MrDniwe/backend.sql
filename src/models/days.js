@@ -37,6 +37,27 @@ module.exports = class Days extends Parent {
       );
   }
 
+  onlyLoadedDays(storeUuid, documentType, daysArr) {
+    if (!(storeUuid && documentType))
+      return Promise.reject(
+        "Не заданы тип документа или storeUuid для кешированных дней"
+      );
+    if (!(daysArr && _.isArray(daysArr) && daysArr.length))
+      return Promise.resolve([]);
+    let params = {
+      days: [daysArr],
+      type: documentType,
+      store: storeUuid
+    };
+    return db
+      .manyOrNone(
+        `select loaded_day from loaded_days 
+        where loaded_day in ($1:csv) and document_type=$2 and store_uuid=$3 and is_temporary=false`,
+        [daysArr, documentType, storeUuid]
+      )
+      .then(result => _.map(result, "loaded_day"));
+  }
+
   deleteByUuid(uuid) {
     if (!uuid)
       return Promise.reject(new Error(`Для удаления нужно указать uuid`));

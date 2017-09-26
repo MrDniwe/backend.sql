@@ -115,70 +115,79 @@ cote.dbResponder.on("upsertClient", req => {
 });
 
 cote.dbResponder.on("loadSessions", req => {
-  return (
-    Promise.all([
-      constraints.payloadPresents(req),
-      constraints.clientIdPresents(req),
-      constraints.tokenPresents(req)
-    ])
-      .then(() => {
-        // реквестируем из БД магазины клиента
-        return Stores.getClientStores(req.payload.id);
-      })
-      // .then(() => {
-      //   //реквестируем список дней из базы соответствующий переданному, для временных дней считаем что они не загружены
-      // })
-      // .then(() => {
-      //   //вычитаем из переданных дней имеющиеся
-      // })
-      .then(stores => {
-        //с недостающими делаем удаленный запрос, в случае ошибки не крошимся
-        return Promise.map(stores, store =>
-          cote.remoteRequester
-            .send({
-              type: "getSessionsByDays",
-              token: req.payload.token,
-              storeUuid: store.uuid,
-              days: req.payload.days
+  return Promise.all([
+    constraints.payloadPresents(req),
+    constraints.clientIdPresents(req),
+    constraints.tokenPresents(req)
+  ])
+    .then(() => {
+      // реквестируем из БД магазины клиента
+      return Stores.getClientStores(req.payload.id);
+    })
+    .then(stores => {
+      //с недостающими делаем удаленный запрос, в случае ошибки не крошимся
+      return Promise.map(stores, store =>
+        daysModel
+          .onlyLoadedDays(
+            store.uuid,
+            "session",
+            _.map(req.payload.days, day => moment(day).format("YYYY-MM-DD"))
+          )
+          .then(allreadyLoaded =>
+            _.map(allreadyLoaded, day => moment(day).utc().format("YYYY-MM-DD"))
+          )
+          .then(momented =>
+            _.difference(
+              _.map(req.payload.days, day => moment(day).format("YYYY-MM-DD")),
+              momented
+            )
+          )
+          .then(daysToLoad =>
+            cote.remoteRequester
+              .send({
+                type: "getSessionsByDays",
+                token: req.payload.token,
+                storeUuid: store.uuid,
+                days: daysToLoad
+              })
+              .then(days =>
+                Promise.resolve({ storeUuid: store.uuid, days: days })
+              )
+          )
+      );
+    })
+    .then(storesDaysDocs => {
+      return Promise.each(storesDaysDocs, storeDaysDocs => {
+        let onlySuccessesDays = _.filter(storeDaysDocs.days, "success");
+        return Promise.map(onlySuccessesDays, dayDocs =>
+          daysModel
+            .upsertOne({
+              store_uuid: storeDaysDocs.storeUuid,
+              loaded_day: moment(dayDocs.day).utc().format("YYYY-MM-DD"),
+              document_type: "session"
             })
-            .then(days =>
-              Promise.resolve({ storeUuid: store.uuid, days: days })
+            .then(loadedDay =>
+              Sessions.prepareRequestedSessions(dayDocs.documents, loadedDay)
+                .then(preparedSessions =>
+                  sessionsModel.upsertMany(preparedSessions)
+                )
+                .catch(err => {
+                  console.error(err);
+                  daysModel
+                    .deleteByUuid(loadedDay.uuid)
+                    .then(() =>
+                      Promise.reject(
+                        new Error(
+                          `Не удалось сохранить сессии для дня ${loadedDay.loaded_day}`
+                        )
+                      )
+                    );
+                })
             )
         );
-      })
-      .then(storesDaysDocs => {
-        return Promise.each(storesDaysDocs, storeDaysDocs => {
-          let onlySuccessesDays = _.filter(storeDaysDocs.days, "success");
-          return Promise.map(onlySuccessesDays, dayDocs =>
-            daysModel
-              .upsertOne({
-                store_uuid: storeDaysDocs.storeUuid,
-                loaded_day: moment(dayDocs.day).utc().format("YYYY-MM-DD"),
-                document_type: "session"
-              })
-              .then(loadedDay =>
-                Sessions.prepareRequestedSessions(dayDocs.documents, loadedDay)
-                  .then(preparedSessions =>
-                    sessionsModel.upsertMany(preparedSessions)
-                  )
-                  .catch(err => {
-                    console.error(err);
-                    daysModel
-                      .deleteByUuid(loadedDay.uuid)
-                      .then(() =>
-                        Promise.reject(
-                          new Error(
-                            `Не удалось сохранить сессии для дня ${loadedDay.loaded_day}`
-                          )
-                        )
-                      );
-                  })
-              )
-          );
-        });
-      })
-      .catch(console.error)
-  );
+      });
+    })
+    .catch(console.error);
   // .then(() => {
   //   //делаем транзакцию по добавлению сессий дня, в случае успеха - создаем инстанс дня, помечаем сегодняшний как временный,
   //   //в случае ошибки не крошимся
