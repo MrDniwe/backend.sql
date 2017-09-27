@@ -2,6 +2,7 @@ const cote = require("./cote");
 const Promise = require("bluebird");
 const _ = require("lodash");
 const moment = require("moment");
+const constraints = require("./constraints");
 
 const Clients = require("./models/clients");
 const Stores = require("./models/stores");
@@ -11,7 +12,9 @@ const Commodities = require("./models/commodities");
 const Sessions = require("./models/sessions");
 const Days = require("./models/days");
 const StoreEmployees = require("./models/store_employees");
-const constraints = require("./constraints");
+const Receipts = require("./models/receipts");
+const Positions = require("./models/positions");
+const Payments = require("./models/payments");
 
 const clientsModel = new Clients();
 const storesModel = new Stores();
@@ -21,6 +24,9 @@ const devicesModel = new Devices();
 const commoditiesModel = new Commodities();
 const sessionsModel = new Sessions();
 const daysModel = new Days();
+const receiptsModel = new Receipts();
+const positionsModel = new Positions();
+const paymentsModel = new Payments();
 
 cote.dbResponder.on("clearClientsRelations", req => {
   Promise.all([
@@ -223,32 +229,53 @@ cote.dbResponder.on("loadSells", req => {
     .then(storesDaysDocs => {
       return Promise.each(storesDaysDocs, storeDaysDocs => {
         let onlySuccessesDays = _.filter(storeDaysDocs.days, "success");
-        return Promise.map(
-          onlySuccessesDays,
-          dayDocs =>
-            daysModel.upsertOne({
+        return Promise.map(onlySuccessesDays, dayDocs =>
+          daysModel
+            .upsertOne({
               store_uuid: storeDaysDocs.storeUuid,
               loaded_day: moment(dayDocs.day).utc().format("YYYY-MM-DD"),
               document_type: "sell"
             })
-          //         .then(loadedDay =>
-          //           Sessions.prepareRequestedSessions(dayDocs.documents, loadedDay)
-          //             .then(preparedSessions =>
-          //               sessionsModel.upsertMany(preparedSessions)
-          //             )
-          //             .catch(err => {
-          //               console.error(err);
-          //               daysModel
-          //                 .deleteByUuid(loadedDay.uuid)
-          //                 .then(() =>
-          //                   Promise.reject(
-          //                     new Error(
-          //                       `Не удалось сохранить сессии для дня ${loadedDay.loaded_day}`
-          //                     )
-          //                   )
-          //                 );
-          //             })
-          //         )
+            .then(loadedDay =>
+              Receipts.prepareRequestedItems(dayDocs.documents, loadedDay)
+                .then(preparedReceipts =>
+                  receiptsModel.upsertMany(preparedReceipts)
+                )
+                .then(() =>
+                  Promise.each(dayDocs.documents, receipt => {
+                    let transactionsGroupedByType = _.groupBy(
+                      receipt.transactions,
+                      "type"
+                    );
+                    return Promise.all([
+                      Positions.prepareRequestedItems(
+                        transactionsGroupedByType["REGISTER_POSITION"],
+                        receipt
+                      ).then(preparedPositions =>
+                        positionsModel.upsertMany(preparedPositions)
+                      ),
+                      Payments.prepareRequestedItems(
+                        transactionsGroupedByType["PAYMENT"],
+                        receipt
+                      ).then(preparedPayments =>
+                        paymentsModel.upsertMany(preparedPayments)
+                      )
+                    ]);
+                  })
+                )
+                .catch(err => {
+                  console.error(err);
+                  daysModel
+                    .deleteByUuid(loadedDay.uuid)
+                    .then(() =>
+                      Promise.reject(
+                        new Error(
+                          `Не удалось сохранить продажи для дня ${loadedDay.loaded_day}`
+                        )
+                      )
+                    );
+                })
+            )
         );
       });
     })
