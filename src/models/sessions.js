@@ -12,7 +12,7 @@ module.exports = class Sessions extends Parent {
           ($[uuid], $[loaded_day_uuid], $[session_uuid], $[device_uuid], $[employee_uuid], $[session_type], $[datetime]) 
         on conflict (uuid) do nothing`;
   }
-  static prepareRequestedSessions(items, loadedDay) {
+  prepareRequestedSessions(items, loadedDay) {
     let sessionTypes = {
       OPEN_SESSION: "open",
       CLOSE_SESSION: "close"

@@ -12,7 +12,7 @@ module.exports = class Payments extends Parent {
           ($[id], $[receipt_uuid], $[sum], $[payment_type]) 
         on conflict do nothing`;
   }
-  static prepareRequestedItems(items, receipt) {
+  prepareRequestedItems(items, receipt) {
     let types = {
       CASH: "cash",
       CARD: "card",

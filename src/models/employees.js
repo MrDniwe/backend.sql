@@ -17,7 +17,7 @@ module.exports = class Stores extends Parent {
           phone=$[phone], 
           updated=current_timestamp`;
   }
-  static prepareRequestedEmployees(employees, client) {
+  prepareRequestedEmployees(employees, client) {
     return Promise.map(employees, employee => {
       let employeePrepared = {
         uuid: employee.uuid,

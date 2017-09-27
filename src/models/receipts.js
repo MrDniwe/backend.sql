@@ -12,7 +12,7 @@ module.exports = class Receipts extends Parent {
           ($[uuid], $[session_uuid], $[loaded_day_uuid], $[device_uuid], $[employee_uuid], $[store_uuid], $[datetime], $[sum]) 
         on conflict (uuid) do nothing`;
   }
-  static prepareRequestedItems(items, loadedDay) {
+  prepareRequestedItems(items, loadedDay) {
     return Promise.map(items, item =>
       Promise.resolve({
         uuid: item.uuid,

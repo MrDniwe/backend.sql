@@ -12,7 +12,7 @@ module.exports = class Positions extends Parent {
           ($[id], $[receipt_uuid], $[commodity_uuid], $[price], $[sum], $[quantity]) 
         on conflict do nothing`;
   }
-  static prepareRequestedItems(items, receipt) {
+  prepareRequestedItems(items, receipt) {
     return Promise.map(items, item =>
       Promise.resolve({
         id: item.id,

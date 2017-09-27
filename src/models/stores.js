@@ -15,10 +15,10 @@ module.exports = class Stores extends Parent {
           address=$[address], 
           updated=current_timestamp`;
   }
-  static getClientStores(clientId) {
+  getClientStores(clientId) {
     return db.many("select * from stores where client_id=$1", clientId);
   }
-  static prepareRequestedStores(stores, client) {
+  prepareRequestedStores(stores, client) {
     return Promise.map(stores, store => ({
       uuid: store.uuid,
       client_id: client.id,
