@@ -69,3 +69,30 @@ create table sessions (
     created timestamp with time zone default current_timestamp,
     updated timestamp with time zone default current_timestamp
 );
+create type paymenttype as enum ('cash', 'card', 'credit', 'unknown');
+create table receipts (
+    uuid uuid primary key,
+    session_uuid uuid not null,
+    loaded_day_uuid uuid not null references loaded_days (uuid) on delete cascade,
+    device_uuid uuid not null references devices (uuid) on delete cascade,
+    store_uuid uuid not null references stores (uuid) on delete cascade,
+    employee_uuid uuid not null references employees (uuid) on delete cascade,
+    datetime timestamp with time zone not null,
+    sum numeric(10,2)
+);
+create table positions (
+    id character varying(255) not null,
+    primary key (id, receipt_uuid),
+    receipt_uuid uuid not null references receipts (uuid) on delete cascade,
+    commodity_uuid uuid not null references commodities (uuid) on delete cascade,
+    price numeric(10,2),
+    sum numeric(10,2),
+    quantity numeric(10,3)
+);
+create table payments (
+    id character varying(255) not null,
+    primary key (id, receipt_uuid),
+    receipt_uuid uuid not null references receipts (uuid) on delete cascade,
+    sum numeric(10,2),
+    payment_type paymenttype not null
+);

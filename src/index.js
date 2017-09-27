@@ -183,3 +183,74 @@ cote.dbResponder.on("loadSessions", req => {
     })
     .catch(console.error);
 });
+
+cote.dbResponder.on("loadSells", req => {
+  return Promise.all([
+    constraints.payloadPresents(req),
+    constraints.clientIdPresents(req),
+    constraints.tokenPresents(req)
+  ])
+    .then(() => {
+      // реквестируем из БД магазины клиента
+      return Stores.getClientStores(req.payload.id);
+    })
+    .then(stores => {
+      //с недостающими делаем удаленный запрос, в случае ошибки не крошимся
+      return Promise.map(stores, store => {
+        let preparedPayload = _.map(req.payload.days, day =>
+          moment(day).format("YYYY-MM-DD")
+        );
+        return daysModel
+          .onlyLoadedDays(store.uuid, "sell", preparedPayload)
+          .then(allreadyLoaded =>
+            _.map(allreadyLoaded, day => moment(day).utc().format("YYYY-MM-DD"))
+          )
+          .then(momented => _.difference(preparedPayload, momented))
+          .then(daysToLoad =>
+            cote.remoteRequester
+              .send({
+                type: "getSellsByDays",
+                token: req.payload.token,
+                storeUuid: store.uuid,
+                days: daysToLoad
+              })
+              .then(days =>
+                Promise.resolve({ storeUuid: store.uuid, days: days })
+              )
+          );
+      });
+    })
+    .then(storesDaysDocs => {
+      return Promise.each(storesDaysDocs, storeDaysDocs => {
+        let onlySuccessesDays = _.filter(storeDaysDocs.days, "success");
+        return Promise.map(
+          onlySuccessesDays,
+          dayDocs =>
+            daysModel.upsertOne({
+              store_uuid: storeDaysDocs.storeUuid,
+              loaded_day: moment(dayDocs.day).utc().format("YYYY-MM-DD"),
+              document_type: "sell"
+            })
+          //         .then(loadedDay =>
+          //           Sessions.prepareRequestedSessions(dayDocs.documents, loadedDay)
+          //             .then(preparedSessions =>
+          //               sessionsModel.upsertMany(preparedSessions)
+          //             )
+          //             .catch(err => {
+          //               console.error(err);
+          //               daysModel
+          //                 .deleteByUuid(loadedDay.uuid)
+          //                 .then(() =>
+          //                   Promise.reject(
+          //                     new Error(
+          //                       `Не удалось сохранить сессии для дня ${loadedDay.loaded_day}`
+          //                     )
+          //                   )
+          //                 );
+          //             })
+          //         )
+        );
+      });
+    })
+    .catch(console.error);
+});
