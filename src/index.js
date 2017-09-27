@@ -14,3 +14,8 @@ cote.dbResponder.on(
 cote.dbResponder.on("loadSessions", controllers.sessions.loadSessions);
 
 cote.dbResponder.on("loadSells", controllers.sells.loadSells);
+
+cote.dbResponder.on(
+  "receiptsReportData",
+  controllers.receipts.receiptsReportData
+);

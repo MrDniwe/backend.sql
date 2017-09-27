@@ -8,5 +8,8 @@ module.exports = {
   },
   sessions: {
     loadSessions: require("./sessions/loadSessions")
+  },
+  receipts: {
+    receiptsReportData: require("./receipts/receiptsReportData")
   }
 };

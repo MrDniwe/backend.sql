@@ -1,3 +1,6 @@
+const Promise = require("bluebird");
+const moment = require("moment");
+
 module.exports = {
   payloadPresents: req => {
     if (!req.payload)
@@ -13,5 +16,19 @@ module.exports = {
     if (!(req.payload && req.payload.token))
       return Promise.reject(new Error("Отсутствует app token клиента"));
     else return Promise.resolve();
+  },
+  clientFromTo: (clientId, dateFrom, dateTo) => {
+    if (!dateTo) dateTo = moment();
+    if (!dateFrom || !moment(dateFrom).isValid())
+      return Promise.reject(
+        new Error(
+          "Не валидная начальная дата в методе получения чеков по магазинам"
+        )
+      );
+    if (!clientId)
+      return Promise.reject(
+        new Error("Отсутсвует ID клиента в методе получения чеков по магазинам")
+      );
+    return Promise.resolve([clientId, dateFrom, dateTo]);
   }
 };
