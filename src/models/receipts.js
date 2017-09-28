@@ -43,19 +43,26 @@ module.exports = class Receipts extends Parent {
       return Promise.reject(
         new Error("Отсутсвует ID клиента в методе получения чеков по магазинам")
       );
-    return db.manyOrNone(
-      `select 
-        store_uuid, title, count(*) as receipts, 
-          (sum(sum) / count(*))::numeric(10,2) as middle_receipt
+    return db
+      .manyOrNone(
+        `select 
+          store_uuid, title, count(*) as receipts, 
+          avg(sum)::numeric(10,2) as middle_receipt
       from receipts inner join stores on receipts.store_uuid = stores.uuid
       where 
-        datetime between $1 and $2 
-        and store_uuid in (select uuid from stores where client_id=$3) 
+        datetime between $[from] and $[to] 
+        and store_uuid in (select uuid from stores where client_id=$[clientId]) 
       group by store_uuid, title;`,
-      dateFrom,
-      dateTo,
-      clientId
-    );
+        {
+          from: moment(dateFrom).toISOString(),
+          to: moment(dateTo).toISOString(),
+          clientId: clientId
+        }
+      )
+      .catch(err => {
+        console.error(err);
+        return Promise.reject(err);
+      });
   }
 
   receiptsAvgAndQuantityByDaysOfWeek(clientId, dateFrom, dateTo) {
@@ -73,15 +80,17 @@ module.exports = class Receipts extends Parent {
     return db.manyOrNone(
       `select 
         date_part('isodow', datetime), count(*) as receipts, 
-        (sum(sum) / count(*))::numeric(10,2) as middle_receipt
+        avg(sum)::numeric(10,2) as middle_receipt
       from receipts
       where 
-        datetime between $1 and $2 
-        and store_uuid in (select uuid from stores where client_id=$3) 
+        datetime between $[from] and $[to] 
+        and store_uuid in (select uuid from stores where client_id=$[clientId]) 
       group by date_part('isodow', datetime);`,
-      dateFrom,
-      dateTo,
-      clientId
+      {
+        from: moment(dateFrom).toISOString(),
+        to: moment(dateTo).toISOString(),
+        clientId: clientId
+      }
     );
   }
   receiptsAvgAndQuantityTotal(clientId, dateFrom, dateTo) {
@@ -96,18 +105,25 @@ module.exports = class Receipts extends Parent {
       return Promise.reject(
         new Error("Отсутсвует ID клиента в методе получения чеков по магазинам")
       );
-    return db.manyOrNone(
-      `select 
+    return db
+      .oneOrNone(
+        `select 
         count(*) as receipts, 
-        (sum(sum) / count(*))::numeric(10,2) as middle_receipt
+        avg(sum)::numeric(10,2) as middle_receipt
       from receipts
       where 
-        datetime between $1 and $2 
-        and store_uuid in (select uuid from stores where client_id=$3);`,
-      dateFrom,
-      dateTo,
-      clientId
-    );
+        datetime between $[from] and $[to] 
+        and store_uuid in (select uuid from stores where client_id=$[clientId])`,
+        {
+          from: moment(dateFrom).toISOString(),
+          to: moment(dateTo).toISOString(),
+          clientId: clientId
+        }
+      )
+      .catch(err => {
+        console.error(err);
+        return Promise.reject(err);
+      });
   }
 
   static topNum(num) {
@@ -144,11 +160,13 @@ module.exports = class Receipts extends Parent {
           max(sum)::numeric(10,2)
         from receipts
         where 
-          datetime between $1 and $2 
-          and store_uuid in (select uuid from stores where client_id=$3)`,
-          dateFrom,
-          dateTo,
-          clientId
+          datetime between $[from] and $[to] 
+          and store_uuid in (select uuid from stores where client_id=$[clientId])`,
+          {
+            from: moment(dateFrom).toISOString(),
+            to: moment(dateTo).toISOString(),
+            clientId: clientId
+          }
         )
       )
       .catch(console.error);
@@ -162,7 +180,7 @@ module.exports = class Receipts extends Parent {
           .then(receipt => Promise.resolve(receipt.max))
           .then(max => {
             let diapasonArray = Receipts.createDiapasonArr(7, max);
-            return Promise.map(diapasonArray, diapason => {
+            return Promise.map(diapasonArray, diapason =>
               this.receiptDiapasonCount(
                 clientId,
                 dateFrom,
@@ -171,9 +189,9 @@ module.exports = class Receipts extends Parent {
                 diapason.top
               ).then(result => {
                 diapason.quantity = result.receipts;
-                Promise.resolve(diapason);
-              });
-            }).catch(console.error);
+                return Promise.resolve(diapason);
+              })
+            ).catch(console.error);
           })
       );
   }
@@ -188,14 +206,16 @@ module.exports = class Receipts extends Parent {
             count(*) as receipts
           from receipts
           where 
-            datetime between $1 and $2 
-              and sum between $4 and $5
-            and store_uuid in (select uuid from stores where client_id=$3)`,
-            dateFrom,
-            dateTo,
-            clientId,
-            bottom,
-            top
+            datetime between $[from] and $[to] 
+              and sum between $[bottom] and $[top]
+            and store_uuid in (select uuid from stores where client_id=$[clientId])`,
+            {
+              from: moment(dateFrom).toISOString(),
+              to: moment(dateTo).toISOString(),
+              clientId: clientId,
+              bottom: bottom,
+              top: top
+            }
           )
           .catch(console.error)
       );

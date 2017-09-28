@@ -10,12 +10,7 @@ module.exports = class Stores extends Parent {
           (uuid, client_id, first_name, middle_name, last_name, phone) 
         values 
           ($[uuid], $[client_id], $[first_name], $[middle_name], $[last_name], $[phone]) 
-        on conflict (uuid) do update
-          set first_name=$[first_name], 
-          middle_name=$[middle_name], 
-          last_name=$[last_name], 
-          phone=$[phone], 
-          updated=current_timestamp`;
+        on conflict (uuid) do nothing`;
   }
   prepareRequestedEmployees(employees, client) {
     return Promise.map(employees, employee => {

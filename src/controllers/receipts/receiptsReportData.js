@@ -11,6 +11,11 @@ module.exports = req => {
     constraints.clientIdPresents(req)
   ]).then(() =>
     Promise.all([
+      models.receipts.receiptsAvgAndQuantityTotal(
+        req.payload.id,
+        req.payload.from,
+        req.payload.to
+      ),
       models.receipts.receiptsAvgAndQuantityByStores(
         req.payload.id,
         req.payload.from,
@@ -21,16 +26,18 @@ module.exports = req => {
         req.payload.from,
         req.payload.to
       ),
-      models.receipts.receiptsAvgAndQuantityTotal(
-        req.payload.id,
-        req.payload.from,
-        req.payload.to
-      ),
       models.receipts.receiptsByPriceDiapasons(
         req.payload.id,
         req.payload.from,
         req.payload.to
       )
-    ])
+    ]).spread((total, byStores, byDays, byDiapasons) =>
+      Promise.resolve({
+        total: total,
+        byStores: byStores,
+        byDays: byDays,
+        byDiapasons: byDiapasons
+      })
+    )
   );
 };

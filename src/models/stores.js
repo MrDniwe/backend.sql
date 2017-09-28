@@ -10,10 +10,7 @@ module.exports = class Stores extends Parent {
           (uuid, client_id, title, address) 
         values 
           ($[uuid], $[client_id], $[title], $[address]) 
-        on conflict (uuid) do update
-          set title=$[title], 
-          address=$[address], 
-          updated=current_timestamp`;
+        on conflict (uuid) do nothing`;
   }
   getClientStores(clientId) {
     return db.many("select * from stores where client_id=$1", clientId);

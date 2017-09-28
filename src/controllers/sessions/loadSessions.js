@@ -24,7 +24,7 @@ module.exports = req => {
         return models.days
           .onlyLoadedDays(store.uuid, "session", preparedPayload)
           .then(allreadyLoaded =>
-            _.map(allreadyLoaded, day => moment(day).utc().format("YYYY-MM-DD"))
+            _.map(allreadyLoaded, day => moment(day).format("YYYY-MM-DD"))
           )
           .then(momented => _.difference(preparedPayload, momented))
           .then(daysToLoad =>

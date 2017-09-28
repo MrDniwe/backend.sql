@@ -4,61 +4,89 @@ const cote = require("../../cote");
 const _ = require("lodash");
 const moment = require("moment");
 const Promise = require("bluebird");
+const Profiler = require("../../libs/profiler");
+const profilingEnabled = false;
 
 module.exports = req => {
+  let profiler = new Profiler(profilingEnabled, "loadSells");
   return Promise.all([
     constraints.payloadPresents(req),
     constraints.clientIdPresents(req),
     constraints.tokenPresents(req)
   ])
     .then(() => {
+      profiler.check("реквестируем из БД магазины клиента");
       // реквестируем из БД магазины клиента
       return models.stores.getClientStores(req.payload.id);
     })
     .then(stores => {
-      //с недостающими делаем удаленный запрос, в случае ошибки не крошимся
+      profiler.check(
+        "с недостающими делаем удаленный запрос, в случае ошибки не крошимся"
+      );
       return Promise.map(stores, store => {
+        let profilerStore = new Profiler(profilingEnabled, store.uuid);
+        profilerStore.check("Готовимся мануть даты");
         let preparedPayload = _.map(req.payload.days, day =>
           moment(day).format("YYYY-MM-DD")
         );
+        profilerStore.check("Мапнули даты");
         return models.days
           .onlyLoadedDays(store.uuid, "sell", preparedPayload)
-          .then(allreadyLoaded =>
-            _.map(allreadyLoaded, day => moment(day).utc().format("YYYY-MM-DD"))
-          )
-          .then(momented => _.difference(preparedPayload, momented))
-          .then(daysToLoad =>
-            cote.remoteRequester
+          .then(allreadyLoaded => {
+            profilerStore.check("Получили ранее загруженные дни");
+            return _.map(allreadyLoaded, day =>
+              moment(day).format("YYYY-MM-DD")
+            );
+          })
+          .then(momented => {
+            profilerStore.check("Мапнули загруженные дни в моменты");
+            return _.difference(preparedPayload, momented);
+          })
+          .then(daysToLoad => {
+            profilerStore.check("Определили дни которые нам надо загрузить");
+            return cote.remoteRequester
               .send({
                 type: "getSellsByDays",
                 token: req.payload.token,
                 storeUuid: store.uuid,
                 days: daysToLoad
               })
-              .then(days =>
-                Promise.resolve({ storeUuid: store.uuid, days: days })
-              )
-          );
+              .then(days => {
+                profilerStore.check(
+                  "Загрузили недостающие дни, отправляем результат"
+                );
+                return Promise.resolve({ storeUuid: store.uuid, days: days });
+              });
+          });
       });
     })
     .then(storesDaysDocs => {
+      profiler.check("магазины с документами");
       return Promise.each(storesDaysDocs, storeDaysDocs => {
+        // console.log(_.filter(storeDaysDocs.days, day => day.success));
         let onlySuccessesDays = _.filter(storeDaysDocs.days, "success");
-        return Promise.map(onlySuccessesDays, dayDocs =>
-          models.days
+        return Promise.map(onlySuccessesDays, dayDocs => {
+          let profilerDays = new Profiler(
+            profilingEnabled,
+            `${storeDaysDocs.uuid}::${dayDocs.day}`
+          );
+          return models.days
             .upsertOne({
               store_uuid: storeDaysDocs.storeUuid,
               loaded_day: moment(dayDocs.day).utc().format("YYYY-MM-DD"),
               document_type: "sell"
             })
-            .then(loadedDay =>
-              models.receipts
+            .then(loadedDay => {
+              profilerDays.check("day created");
+              return models.receipts
                 .prepareRequestedItems(dayDocs.documents, loadedDay)
-                .then(preparedReceipts =>
-                  models.receipts.upsertMany(preparedReceipts)
-                )
-                .then(() =>
-                  Promise.each(dayDocs.documents, receipt => {
+                .then(preparedReceipts => {
+                  profilerDays.check("receipts prepared");
+                  return models.receipts.upsertMany(preparedReceipts);
+                })
+                .then(() => {
+                  profilerDays.check("receipts upserted");
+                  return Promise.each(dayDocs.documents, receipt => {
                     let transactionsGroupedByType = _.groupBy(
                       receipt.transactions,
                       "type"
@@ -81,8 +109,11 @@ module.exports = req => {
                           models.payments.upsertMany(preparedPayments)
                         )
                     ]);
-                  })
-                )
+                  }).then(result => {
+                    profilerDays.check("docs upserted");
+                    return Promise.resolve(result);
+                  });
+                })
                 .catch(err => {
                   console.error(err);
                   models.days
@@ -94,10 +125,14 @@ module.exports = req => {
                         )
                       )
                     );
-                })
-            )
-        );
+                });
+            });
+        });
       });
+    })
+    .then(result => {
+      profiler.check("результат");
+      return Promise.resolve(result);
     })
     .catch(console.error);
 };
