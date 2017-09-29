@@ -1,5 +1,6 @@
 const cote = require("./cote");
 const controllers = require("./controllers/controllers");
+const config = require("./config");
 
 cote.dbResponder.on(
   "clearClientsRelations",
@@ -21,3 +22,9 @@ cote.dbResponder.on(
 );
 
 cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);
+
+// setInterval(() => {
+//   controllers.schedule
+//     .populateSchedule()
+//     .then(() => controllers.schedule.loadFromSchedule());
+// }, config.schedule.scheduleTimeoutMs);

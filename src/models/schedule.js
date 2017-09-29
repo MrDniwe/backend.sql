@@ -63,8 +63,38 @@ module.exports = class Schedule extends Parent {
       Promise.all([
         this.createScheduleForDateSells(day),
         this.createScheduleForDateSessions(day),
-        this.createScheduleForTemporary()
+        this.createScheduleForTemporary(),
+        this.setLongPendedToStill()
       ])
+    ).catch(console.error);
+  }
+  getRecordsToPending() {
+    return db.manyOrNone(
+      `select date, document_type, store_uuid, token  
+      from 
+        (select date, document_type, store_uuid, client_id 
+          from 
+          (select date, document_type, store_uuid 
+            from 
+              (select * 
+                from schedule 
+                order by pending desc, date desc 
+                limit $[simultaneous]) as last_ten 
+            where pending=false) as schedules 
+            inner join stores on stores.uuid = schedules.store_uuid) as schedule_stores 
+        inner join clients on clients.id = schedule_stores.client_id`,
+      { simultaneous: config.schedule.simultaneousOperations }
     );
+  }
+  setLongPendedToStill() {
+    return db.none(
+      `update schedule
+      set pending=false, added=current_timestamp 
+      where pending=true and added < (now() - interval $[pending])`,
+      { pending: config.schedule.closePending }
+    );
+  }
+  markAsPending(items) {
+    //TODO групповая отметка элементов расписания как пендящихся
   }
 };
