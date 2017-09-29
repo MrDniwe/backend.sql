@@ -9,6 +9,7 @@ const StoreEmployees = require("./store_employees");
 const Receipts = require("./receipts");
 const Positions = require("./positions");
 const Payments = require("./payments");
+const Schedule = require("./schedule");
 
 module.exports = {
   clients: new Clients(),
@@ -21,5 +22,6 @@ module.exports = {
   days: new Days(),
   receipts: new Receipts(),
   positions: new Positions(),
-  payments: new Payments()
+  payments: new Payments(),
+  schedule: new Schedule()
 };

@@ -5,5 +5,9 @@ module.exports = {
     database: process.env.DB_NAME || "cache",
     user: process.env.DB_USERNAME || "cache",
     password: process.env.DB_PASSWORD || "cache"
+  },
+  schedule: {
+    daysToLoad: 182,
+    temporaryReloadCycle: "1 hour"
   }
 };

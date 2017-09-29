@@ -5,6 +5,7 @@ const _ = require("lodash");
 const Promise = require("bluebird");
 
 module.exports = req => {
+  // console.log("update called with: ", req);
   return Promise.all([
     constraints.payloadPresents(req),
     constraints.clientIdPresents(req),

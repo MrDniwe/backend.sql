@@ -11,5 +11,8 @@ module.exports = {
   },
   receipts: {
     receiptsReportData: require("./receipts/receiptsReportData")
+  },
+  schedule: {
+    populateSchedule: require("./schedule/populateSchedule")
   }
 };

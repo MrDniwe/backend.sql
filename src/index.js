@@ -19,3 +19,5 @@ cote.dbResponder.on(
   "receiptsReportData",
   controllers.receipts.receiptsReportData
 );
+
+cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);

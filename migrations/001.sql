@@ -96,3 +96,10 @@ create table payments (
     sum numeric(10,2),
     payment_type paymenttype not null
 );
+create table schedule (
+    date date not null,
+    document_type doctype not null,
+    store_uuid uuid not null references stores (uuid) on delete cascade,
+    added timestamp default current_timestamp,
+    primary key (date, document_type, store_uuid)
+);
