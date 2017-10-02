@@ -6,6 +6,7 @@ const moment = require("moment");
 const Promise = require("bluebird");
 
 module.exports = req => {
+  console.log(req.payload);
   return Promise.all([
     constraints.payloadPresents(req),
     constraints.clientIdPresents(req)

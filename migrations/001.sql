@@ -1,5 +1,6 @@
 create table clients (
     id character(255) primary key,
+    token uuid not null,
     created timestamp with time zone default current_timestamp,
     updated timestamp with time zone default current_timestamp
 );
