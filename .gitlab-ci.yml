@@ -1,0 +1,31 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  CONTAINER_STAGING_IMAGE: registry.arcdev.ru/evotor/evotor-cache-db:latest
+
+before_script:
+  - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.arcdev.ru
+
+build_develop:
+  stage: build
+  tags:
+    - dockerhttp
+  script:
+    - docker build -t $CONTAINER_STAGING_IMAGE .
+    - docker push $CONTAINER_STAGING_IMAGE
+  only:
+    - develop
+
+restart_develop:
+  stage: deploy
+  tags:
+    - shell
+  script:
+    - docker pull $CONTAINER_STAGING_IMAGE
+    - cd /var/server/
+    - docker-compose up -d
+  only:
+    - develop
+
