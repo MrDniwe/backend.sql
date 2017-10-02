@@ -101,5 +101,6 @@ create table schedule (
     document_type doctype not null,
     store_uuid uuid not null references stores (uuid) on delete cascade,
     added timestamp default current_timestamp,
+    pending boolean not null default false,
     primary key (date, document_type, store_uuid)
 );
