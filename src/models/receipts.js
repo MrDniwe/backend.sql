@@ -99,7 +99,6 @@ module.exports = class Receipts extends Parent {
     );
   }
   receiptsAvgAndQuantityTotal(clientId, dateFrom, dateTo) {
-    console.log("receiptsAvgAndQuantityTotal: ", clientId, dateFrom, dateTo);
     if (!dateTo) dateTo = moment();
     if (!dateFrom || !moment(dateFrom).isValid())
       return Promise.reject(
