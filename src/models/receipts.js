@@ -16,19 +16,24 @@ module.exports = class Receipts extends Parent {
           ($[uuid], $[session_uuid], $[loaded_day_uuid], $[device_uuid], $[employee_uuid], $[store_uuid], $[datetime], $[sum]) 
         on conflict (uuid) do nothing`;
   }
+
   prepareRequestedItems(items, loadedDay) {
     return Promise.map(items, item =>
-      Promise.resolve({
-        uuid: item.uuid,
-        session_uuid: item.sessionUUID,
-        loaded_day_uuid: loadedDay.uuid,
-        device_uuid: item.deviceUuid,
-        employee_uuid: item.openUserUuid,
-        store_uuid: item.storeUuid,
-        datetime: item.openDate,
-        sum: item.closeResultSum
-      })
+      this.prepareRequestedItem(item, loadedDay)
     );
+  }
+
+  prepareRequestedItem(item, loadedDay) {
+    return Promise.resolve({
+      uuid: item.uuid,
+      session_uuid: item.sessionUUID,
+      loaded_day_uuid: loadedDay.uuid,
+      device_uuid: item.deviceUuid,
+      employee_uuid: item.openUserUuid,
+      store_uuid: item.storeUuid,
+      datetime: item.openDate,
+      sum: item.closeResultSum
+    });
   }
 
   receiptsAvgAndQuantityByStores(clientId, dateFrom, dateTo) {

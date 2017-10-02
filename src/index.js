@@ -23,8 +23,12 @@ cote.dbResponder.on(
 
 cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);
 
-// setInterval(() => {
-//   controllers.schedule
-//     .populateSchedule()
-//     .then(() => controllers.schedule.loadFromSchedule());
-// }, config.schedule.scheduleTimeoutMs);
+//TODO однократный вызов для тестов
+// controllers.schedule
+//   .populateSchedule()
+//   .then(() => controllers.schedule.loadFromSchedule());
+setInterval(() => {
+  controllers.schedule
+    .populateSchedule()
+    .then(() => controllers.schedule.loadFromSchedule());
+}, config.schedule.scheduleTimeoutMs);

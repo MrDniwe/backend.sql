@@ -9,6 +9,8 @@ module.exports = () => {
     .getRecordsToPending()
     .then(toPendList => {
       let grouped = _.groupBy(toPendList, "document_type");
+      grouped.session = grouped.session || [];
+      grouped.sell = grouped.sell || [];
       return Promise.all([
         Promise.map(grouped.sell, day =>
           loadSellsByDay(day.token, day.store_uuid, day.date)

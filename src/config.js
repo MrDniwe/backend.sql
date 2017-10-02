@@ -10,7 +10,7 @@ module.exports = {
     daysToLoad: 182,
     temporaryReloadCycle: "1 hour",
     closePending: "5 mins",
-    scheduleTimeoutMs: 20000,
+    scheduleTimeoutMs: 3000,
     simultaneousOperations: 10
   }
 };

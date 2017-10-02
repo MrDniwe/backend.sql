@@ -94,7 +94,29 @@ module.exports = class Schedule extends Parent {
       { pending: config.schedule.closePending }
     );
   }
-  markAsPending(items) {
-    //TODO групповая отметка элементов расписания как пендящихся
+  markItemAsPending(date, storeUuid, type) {
+    if (!(date && moment(date).isValid() && storeUuid && type))
+      return Promise.reject(
+        new Error(
+          'Недостаточно параметоров для отметки строки расписания как "в обработке"'
+        )
+      );
+    return db.none(
+      `update schedule
+      set pending=true, added=current_timestamp
+      where date=$1 and document_type=$2 and store_uuid=$3`,
+      [date, type, storeUuid]
+    );
+  }
+  removeRowFromSchedule(date, storeUuid, type) {
+    if (!(date && moment(date).isValid() && storeUuid && type))
+      return Promise.reject(
+        new Error("Недостаточно параметоров для удаления строки из раписания")
+      );
+    return db.none(
+      `delete from schedule
+      where date=$1 and document_type=$2 and store_uuid=$3`,
+      [date, type, storeUuid]
+    );
   }
 };
