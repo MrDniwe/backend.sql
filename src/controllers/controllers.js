@@ -11,8 +11,9 @@ module.exports = {
     loadSessions: require("./sessions/loadSessions"),
     loadSessionsByDay: require("./sessions/loadSessionsByDay")
   },
-  receipts: {
-    receiptsReportData: require("./receipts/receiptsReportData")
+  reports: {
+    receiptsReportData: require("./reports/receiptsReportData"),
+    summaryReportData: require("./reports/summaryReportData")
   },
   schedule: {
     populateSchedule: require("./schedule/populateSchedule"),

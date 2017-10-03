@@ -18,15 +18,13 @@ cote.dbResponder.on("loadSells", controllers.sells.loadSells);
 
 cote.dbResponder.on(
   "receiptsReportData",
-  controllers.receipts.receiptsReportData
+  controllers.reports.receiptsReportData
 );
+
+cote.dbResponder.on("summaryReportData", controllers.reports.summaryReportData);
 
 cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);
 
-//TODO однократный вызов для тестов
-// controllers.schedule
-//   .populateSchedule()
-//   .then(() => controllers.schedule.loadFromSchedule());
 setInterval(() => {
   controllers.schedule
     .populateSchedule()

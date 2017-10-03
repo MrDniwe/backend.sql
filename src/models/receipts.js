@@ -5,6 +5,9 @@ const db = require("../db");
 const moment = require("moment");
 const R = require("ramda");
 const constraints = require("../constraints");
+const Stores = require("./stores");
+const storesModel = new Stores();
+const assert = require("assert");
 
 module.exports = class Receipts extends Parent {
   constructor() {
@@ -224,5 +227,42 @@ module.exports = class Receipts extends Parent {
           )
           .catch(console.error)
       );
+  }
+
+  receiptsAvgAndQuantityTotalByGivenStores(dateFrom, dateTo, storesList) {
+    return db
+      .oneOrNone(
+        `select 
+        count(*) as receipts, 
+        avg(sum)::numeric(10,2) as middle_receipt
+      from receipts
+      where 
+        datetime between $1 and $2 
+        and store_uuid in $3:csv`,
+        [
+          moment(dateFrom).toISOString(),
+          moment(dateTo).toISOString(),
+          storesList
+        ]
+      )
+      .catch(err => {
+        console.error(err);
+        return Promise.reject(err);
+      });
+  }
+
+  receiptsSummaryWithDeltaAndStore(datePrevious, dateFrom, dateTo, storeUuids) {
+    return Promise.all([
+      this.receiptsAvgAndQuantityTotalByGivenStores(
+        dateFrom,
+        dateTo,
+        storeUuids
+      ),
+      this.receiptsAvgAndQuantityTotalByGivenStores(
+        datePrevious,
+        dateFrom,
+        storeUuids
+      )
+    ]).catch(console.error);
   }
 };
