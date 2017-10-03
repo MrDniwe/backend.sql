@@ -25,16 +25,23 @@ module.exports = req => {
               req.payload.from,
               req.payload.to,
               storeUuids
+            ),
+            models.payments.paymentsSumByTypesAndStoresWithDelta(
+              previous,
+              req.payload.from,
+              req.payload.to,
+              storeUuids
             )
-          ]).spread(total =>
+          ]).spread((total, payments) =>
             Promise.resolve({
-              total: total
+              total: total,
+              payments: payments
             })
           )
         );
     })
     .catch(err => {
       console.error(err);
-      Promise.reject(err);
+      return Promise.reject(err);
     });
 };
