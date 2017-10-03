@@ -6,8 +6,7 @@ const moment = require("moment");
 const R = require("ramda");
 const constraints = require("../constraints");
 const Stores = require("./stores");
-const storesModel = new Stores();
-const assert = require("assert");
+const helpers = require("../libs/helpers");
 
 module.exports = class Receipts extends Parent {
   constructor() {
@@ -238,7 +237,7 @@ module.exports = class Receipts extends Parent {
       from receipts
       where 
         datetime between $1 and $2 
-        and store_uuid in $3:csv`,
+        and store_uuid in ($3:csv)`,
         [
           moment(dateFrom).toISOString(),
           moment(dateTo).toISOString(),
@@ -263,6 +262,27 @@ module.exports = class Receipts extends Parent {
         dateFrom,
         storeUuids
       )
-    ]).catch(console.error);
+    ])
+      .spread((currentPeriod, previousPeriod) =>
+        Promise.resolve({
+          receipts: _.toInteger(currentPeriod.receipts),
+          receipts_delta: _.round(
+            helpers.delta(
+              _.toInteger(currentPeriod.receipts),
+              _.toInteger(previousPeriod.receipts)
+            ),
+            3
+          ),
+          middle_receipt: _.toInteger(currentPeriod.middle_receipt),
+          middle_receipt_delta: _.round(
+            helpers.delta(
+              _.toInteger(currentPeriod.middle_receipt),
+              _.toInteger(previousPeriod.middle_receipt)
+            ),
+            3
+          )
+        })
+      )
+      .catch(console.error);
   }
 };

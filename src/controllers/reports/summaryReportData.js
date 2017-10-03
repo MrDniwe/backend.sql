@@ -14,7 +14,7 @@ module.exports = req => {
     )
     .then(() => {
       let previous = moment(req.payload.from).subtract(
-        req.payload.to - req.payload.from
+        moment(req.payload.to) - moment(req.payload.from)
       );
       return models.stores
         .exactOrAllStores(req.payload.id, req.payload.storeUuid)
