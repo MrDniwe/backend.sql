@@ -15,7 +15,7 @@ module.exports = req => {
       let previous = helpers.previousFromPayload(req.payload);
       return Promise.all([
         models.employees.countTotalClientsEmployees(req.payload.id),
-        models.employees.employeesPaginatedListWithRevenueAndReceipts(
+        models.employees.paginatedListWithRevenueAndReceipts(
           req.payload.id,
           previous,
           req.payload.from,
@@ -23,7 +23,11 @@ module.exports = req => {
           req.payload.limit,
           req.payload.offset
         ),
-        Promise.resolve("chart")
+        models.employees.allClientsEmployeesByPeriodWithRevenue(
+          req.payload.id,
+          req.payload.from,
+          req.payload.to
+        )
       ]).spread((total, reports, chart) =>
         Promise.resolve({
           total: total,

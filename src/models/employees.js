@@ -36,7 +36,7 @@ module.exports = class Stores extends Parent {
       .one(`select count(*) from employees where client_id=$1`, [clientId])
       .then(result => Promise.resolve(_.toInteger(result.count)));
   }
-  employeesPaginatedListWithRevenueAndReceipts(
+  paginatedListWithRevenueAndReceipts(
     clientId,
     previous,
     from,
@@ -97,5 +97,23 @@ module.exports = class Stores extends Parent {
           })
         )
       );
+  }
+  allClientsEmployeesByPeriodWithRevenue(clientId, from, to) {
+    let query = `select first_name, middle_name, last_name, revenue from
+(select employee_uuid, sum(sum)::bigint as revenue
+    from receipts 
+    where 
+     store_uuid in (select uuid from stores where client_id=$[clientId])
+     and datetime between $[from] and $[to]
+    group by employee_uuid) as receipts inner join (select * from employees) as employees on employees.uuid=receipts.employee_uuid
+    order by revenue desc;`;
+    return db.manyOrNone(query, { clientId, from, to }).then(itemsList =>
+      Promise.resolve(
+        _.map(itemsList, item => {
+          item.revenue = _.toInteger(item.revenue);
+          return item;
+        })
+      )
+    );
   }
 };
