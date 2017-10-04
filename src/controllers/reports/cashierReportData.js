@@ -14,7 +14,7 @@ module.exports = req => {
     .then(() => {
       let previous = helpers.previousFromPayload(req.payload);
       return Promise.all([
-        Promise.resolve("total"),
+        models.employees.countTotalClientsEmployees(req.payload.id),
         Promise.resolve("reports"),
         Promise.resolve("chart")
       ]).spread((total, reports, chart) =>

@@ -1,6 +1,7 @@
 const Parent = require("./_parent");
 const Promise = require("bluebird");
 const _ = require("lodash");
+const db = require("../db");
 
 module.exports = class Stores extends Parent {
   constructor() {
@@ -28,5 +29,10 @@ module.exports = class Stores extends Parent {
       }));
       return Promise.resolve(employeePrepared);
     });
+  }
+  countTotalClientsEmployees(clientId) {
+    return db
+      .one(`select count(*) from employees where client_id=$1`, [clientId])
+      .then(result => Promise.resolve(_.toInteger(result.count)));
   }
 };
