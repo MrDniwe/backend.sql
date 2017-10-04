@@ -17,6 +17,7 @@ module.exports = req => {
         models.employees.countTotalClientsEmployees(req.payload.id),
         models.employees.employeesPaginatedListWithRevenueAndReceipts(
           req.payload.id,
+          previous,
           req.payload.from,
           req.payload.to,
           req.payload.limit,
