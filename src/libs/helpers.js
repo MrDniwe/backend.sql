@@ -4,6 +4,7 @@ const moment = require("moment");
 module.exports = {
   delta: (current, previous) =>
     previous ? (current - previous) / previous : undefined,
+
   flattenHours: clientTimeSlice => {
     clientTimeSlice = _.omit(clientTimeSlice, ["fromTime", "toTime"]);
     let flatHours = {};
@@ -17,5 +18,8 @@ module.exports = {
       });
     });
     return flatHours;
-  }
+  },
+
+  previousFromPayload: payload =>
+    moment(payload.from).subtract(moment(payload.to) - moment(payload.from))
 };

@@ -1,11 +1,9 @@
 const models = require("../../models/_models");
 const constraints = require("../../constraints");
 const Promise = require("bluebird");
-const moment = require("moment");
 const helpers = require("../../libs/helpers");
 
 module.exports = req => {
-  console.log(req.payload);
   return Promise.all([
     constraints.payloadPresents(req),
     constraints.clientIdPresents(req)
@@ -14,9 +12,7 @@ module.exports = req => {
       constraints.clientFromTo(req.payload.id, req.payload.from, req.payload.to)
     )
     .then(() => {
-      let previous = moment(req.payload.from).subtract(
-        moment(req.payload.to) - moment(req.payload.from)
-      );
+      let previous = helpers.previousFromPayload(req.payload);
       return models.stores
         .exactOrAllStores(req.payload.id, req.payload.storeUuid)
         .then(storeUuids =>
