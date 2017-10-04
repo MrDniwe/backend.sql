@@ -5,7 +5,6 @@ const db = require("../db");
 const moment = require("moment");
 const R = require("ramda");
 const constraints = require("../constraints");
-const Stores = require("./stores");
 const helpers = require("../libs/helpers");
 
 module.exports = class Receipts extends Parent {
