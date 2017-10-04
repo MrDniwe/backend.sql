@@ -14,7 +14,12 @@ module.exports = req => {
     .then(() => {
       let previous = helpers.previousFromPayload(req.payload);
       return Promise.all([
-        Promise.resolve("storesData"),
+        models.stores.receiptsDataWithDelta(
+          req.payload.id,
+          previous,
+          req.payload.from,
+          req.payload.to
+        ),
         Promise.resolve("goodsData"),
         models.receipts.receiptsByTimeDiapasonListAndClientId(
           req.payload.id,

@@ -37,4 +37,52 @@ module.exports = class Stores extends Parent {
         return Promise.resolve(stores);
       });
   }
+  receiptsDataWithDelta(clientId, previous, from, to) {
+    let query = `
+      select 
+        title, 
+        current_revenue as revenue, 
+        revenue_delta, 
+        current_avg_receipt as avg_receipt, 
+        avg_receipt_delta, 
+        current_receipts as receipts, 
+        receipts_delta
+      from    
+          (select 
+              store_uuid, 
+              current_revenue, 
+              ((current_revenue - previous_revenue)::numeric(12,2)/nullif(previous_revenue::numeric(12,2),0))::numeric(12,3) as revenue_delta,
+              current_avg_receipt,
+              ((current_avg_receipt - previous_avg_receipt)::numeric(12,2)/nullif(previous_avg_receipt::numeric(12,2),0))::numeric(12,3) as avg_receipt_delta,
+              current_receipts,
+              ((current_receipts - previous_receipts)::numeric(12,2)/nullif(previous_receipts::numeric(12,2),0))::numeric(12,3) as receipts_delta
+          from
+            (select 
+              store_uuid as store_uuid, 
+              sum(sum)::bigint as current_revenue, 
+              avg(sum)::integer as current_avg_receipt, 
+              count(*) as current_receipts 
+            from receipts 
+            where 
+              datetime between $[from] and $[to] 
+              and store_uuid in (select uuid from stores where client_id=$[clientId]) 
+            group by store_uuid) 
+            as current
+          left join
+            (select 
+              store_uuid as p_store_uuid, 
+              sum(sum)::bigint as previous_revenue, 
+              avg(sum)::integer as previous_avg_receipt, 
+              count(*) as previous_receipts  
+            from receipts 
+            where 
+              datetime between $[previous] and $[from] 
+              and store_uuid in (select uuid from stores where client_id=$[clientId]) 
+            group by store_uuid) 
+            as previous
+          on current.store_uuid = previous.p_store_uuid) as united 
+      inner join (select uuid, title from stores) as stores
+      on united.store_uuid = stores.uuid`;
+    return db.manyOrNone(query, { clientId, previous, from, to });
+  }
 };
