@@ -66,6 +66,15 @@ module.exports = class Receipts extends Parent {
           clientId: clientId
         }
       )
+      .then(result =>
+        Promise.resolve(
+          _.map(result, item => {
+            item.receipts = _.toInteger(item.receipts);
+            item.middle_receipt = _.toInteger(item.middle_receipt);
+            return item;
+          })
+        )
+      )
       .catch(err => {
         console.error(err);
         return Promise.reject(err);
@@ -84,8 +93,9 @@ module.exports = class Receipts extends Parent {
       return Promise.reject(
         new Error("Отсутсвует ID клиента в методе получения чеков по магазинам")
       );
-    return db.manyOrNone(
-      `select 
+    return db
+      .manyOrNone(
+        `select 
         date_part('isodow', datetime), count(*) as receipts, 
         avg(sum)::numeric(10,2) as middle_receipt
       from receipts
@@ -93,12 +103,21 @@ module.exports = class Receipts extends Parent {
         datetime between $[from] and $[to] 
         and store_uuid in (select uuid from stores where client_id=$[clientId]) 
       group by date_part('isodow', datetime);`,
-      {
-        from: moment(dateFrom).toISOString(),
-        to: moment(dateTo).toISOString(),
-        clientId: clientId
-      }
-    );
+        {
+          from: moment(dateFrom).toISOString(),
+          to: moment(dateTo).toISOString(),
+          clientId: clientId
+        }
+      )
+      .then(result => {
+        return Promise.resolve(
+          _.map(result, item => {
+            item.receipts = _.toInteger(item.receipts);
+            item.middle_receipt = _.toInteger(item.middle_receipt);
+            return item;
+          })
+        );
+      });
   }
   receiptsAvgAndQuantityTotal(clientId, dateFrom, dateTo) {
     if (!dateTo) dateTo = moment();
@@ -127,6 +146,11 @@ module.exports = class Receipts extends Parent {
           clientId: clientId
         }
       )
+      .then(result => {
+        result.receipts = _.toInteger(result.receipts);
+        result.middle_receipt = _.toInteger(result.middle_receipt);
+        return Promise.resolve(result);
+      })
       .catch(err => {
         console.error(err);
         return Promise.reject(err);
@@ -186,7 +210,7 @@ module.exports = class Receipts extends Parent {
         this.maxReceiptSum(clientId, dateFrom, dateTo)
           .then(receipt => Promise.resolve(receipt.max))
           .then(max => {
-            let diapasonArray = Receipts.createDiapasonArr(7, max);
+            let diapasonArray = Receipts.createDiapasonArr(7, max || 7000);
             return Promise.map(diapasonArray, diapason =>
               this.receiptDiapasonCount(
                 clientId,
@@ -200,7 +224,15 @@ module.exports = class Receipts extends Parent {
               })
             ).catch(console.error);
           })
-      );
+      )
+      .then(result => {
+        return Promise.resolve(
+          _.map(result, item => {
+            item.quantity = _.toInteger(item.quantity);
+            return item;
+          })
+        );
+      });
   }
 
   receiptDiapasonCount(clientId, dateFrom, dateTo, bottom = 0, top = 1000) {
