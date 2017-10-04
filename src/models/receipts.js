@@ -285,4 +285,32 @@ module.exports = class Receipts extends Parent {
       )
       .catch(console.error);
   }
+
+  receiptsByTimeDiapasonAndGivenStores(dateFrom, dateTo, storesList) {
+    return db.oneOrNone(
+      `select sum(sum), count(*) from receipts where 
+        datetime between $1 and $2 
+        and store_uuid in ($3:csv);`,
+      [dateFrom, dateTo, storesList]
+    );
+  }
+  receiptsByTimeDiapasonListAndGivenStores(diapasonList, storesList) {
+    let diapasonArray = [];
+    _.forEach(diapasonList, (value, key) => {
+      diapasonArray.push(_.extend(value, { label: key }));
+    });
+    return Promise.map(diapasonArray, diapason =>
+      this.receiptsByTimeDiapasonAndGivenStores(
+        diapason.fromTime,
+        diapason.toTime,
+        storesList
+      ).then(result =>
+        Promise.resolve({
+          label: diapason.label,
+          quantity: _.toInteger(result.count),
+          sum: _.toInteger(result.sum)
+        })
+      )
+    );
+  }
 };
