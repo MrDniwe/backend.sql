@@ -25,6 +25,8 @@ cote.dbResponder.on("summaryReportData", controllers.reports.summaryReportData);
 
 cote.dbResponder.on("cashierReportData", controllers.reports.cashierReportData);
 
+cote.dbResponder.on("storesReportData", controllers.reports.storesReportData);
+
 cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);
 
 setInterval(() => {

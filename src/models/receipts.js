@@ -325,6 +325,14 @@ module.exports = class Receipts extends Parent {
       [dateFrom, dateTo, storesList]
     );
   }
+  receiptsByTimeDiapasonAndClientId(clientId, dateFrom, dateTo) {
+    return db.oneOrNone(
+      `select sum(sum), count(*) from receipts where 
+        datetime between $1 and $2 
+        and store_uuid in (select uuid from stores where client_id=$3);`,
+      [dateFrom, dateTo, clientId]
+    );
+  }
   receiptsByTimeDiapasonListAndGivenStores(diapasonList, storesList) {
     let diapasonArray = [];
     _.forEach(diapasonList, (value, key) => {
@@ -335,6 +343,25 @@ module.exports = class Receipts extends Parent {
         diapason.fromTime,
         diapason.toTime,
         storesList
+      ).then(result =>
+        Promise.resolve({
+          label: diapason.label,
+          quantity: _.toInteger(result.count),
+          sum: _.toInteger(result.sum)
+        })
+      )
+    );
+  }
+  receiptsByTimeDiapasonListAndClientId(clientId, diapasonList) {
+    let diapasonArray = [];
+    _.forEach(diapasonList, (value, key) => {
+      diapasonArray.push(_.extend(value, { label: key }));
+    });
+    return Promise.map(diapasonArray, diapason =>
+      this.receiptsByTimeDiapasonAndClientId(
+        clientId,
+        diapason.fromTime,
+        diapason.toTime
       ).then(result =>
         Promise.resolve({
           label: diapason.label,

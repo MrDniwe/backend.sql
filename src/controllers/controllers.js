@@ -14,7 +14,8 @@ module.exports = {
   reports: {
     receiptsReportData: require("./reports/receiptsReportData"),
     summaryReportData: require("./reports/summaryReportData"),
-    cashierReportData: require("./reports/cashierReportData")
+    cashierReportData: require("./reports/cashierReportData"),
+    storesReportData: require("./reports/storesReportData")
   },
   schedule: {
     populateSchedule: require("./schedule/populateSchedule"),
