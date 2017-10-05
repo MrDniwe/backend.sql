@@ -99,4 +99,24 @@ module.exports = class Stores extends Parent {
         )
       );
   }
+  countClientStoresCommodities(clientId, storeUuid, from, to) {
+    const query = `
+      select count(*)
+      from
+          (select commodity_uuid
+          from positions
+          where
+              receipt_uuid in
+                  (select uuid 
+                  from receipts 
+                  where
+                      store_uuid in ($1:csv) and 
+                      datetime between $2 and $3)
+      group by commodity_uuid) as grouped`;
+    return this.exactOrAllStores(clientId, storeUuid)
+      .then(storeUuids => db.oneOrNone(query, [storeUuids, from, to]))
+      .then(result =>
+        Promise.resolve((result && _.toInteger(result.count)) || 0)
+      );
+  }
 };
