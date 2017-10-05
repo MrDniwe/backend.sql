@@ -183,7 +183,19 @@ module.exports = class Stores extends Parent {
       order by revenue desc
     `;
     return this.exactOrAllStores(clientId, storeUuid).then(storeUuids =>
-      db.manyOrNone(query, [storeUuids, previous, from, to, limit, offset])
+      db
+        .manyOrNone(query, [storeUuids, previous, from, to, limit, offset])
+        .then(resultList =>
+          Promise.resolve(
+            _.map(resultList, item => {
+              item.revenue = _.toInteger(item.revenue);
+              item.revenue_delta = _.toNumber(item.revenue_delta);
+              item.quantity = _.toInteger(item.quantity);
+              item.quantity_delta = _.toNumber(item.quantity_delta);
+              return item;
+            })
+          )
+        )
     );
   }
 };
