@@ -96,7 +96,8 @@ module.exports = class Receipts extends Parent {
       .manyOrNone(
         `select 
         date_part('isodow', datetime), count(*) as receipts, 
-        avg(sum)::numeric(10,2) as middle_receipt
+        avg(sum)::numeric(10,2) as middle_receipt,
+        sum(sum)::bigint as revenue
       from receipts
       where 
         datetime between $[from] and $[to] 
@@ -113,6 +114,7 @@ module.exports = class Receipts extends Parent {
           _.map(result, item => {
             item.receipts = _.toInteger(item.receipts);
             item.middle_receipt = _.toInteger(item.middle_receipt);
+            item.revenue = _.toInteger(item.revenue);
             return item;
           })
         );
