@@ -31,6 +31,7 @@ cote.dbResponder.on(
   "storesGoodsReportData",
   controllers.reports.storesGoodsReportData
 );
+cote.dbResponder.on("goodsReportData", controllers.reports.goodsReportData);
 
 cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);
 
