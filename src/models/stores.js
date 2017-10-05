@@ -99,4 +99,103 @@ module.exports = class Stores extends Parent {
         )
       );
   }
+  countClientStoresCommodities(clientId, storeUuid, from, to) {
+    const query = `
+      select count(*)
+      from
+          (select commodity_uuid
+          from positions
+          where
+              receipt_uuid in
+                  (select uuid 
+                  from receipts 
+                  where
+                      store_uuid in ($1:csv) and 
+                      datetime between $2 and $3)
+      group by commodity_uuid) as grouped`;
+    return this.exactOrAllStores(clientId, storeUuid)
+      .then(storeUuids => db.oneOrNone(query, [storeUuids, from, to]))
+      .then(result =>
+        Promise.resolve((result && _.toInteger(result.count)) || 0)
+      );
+  }
+  clientStoresSellsList(
+    clientId,
+    storeUuid,
+    previous,
+    from,
+    to,
+    limit,
+    offset
+  ) {
+    limit = _.toInteger(limit) || 10;
+    offset = _.toInteger(offset) || 0;
+    const query = `
+      select
+        title,
+        revenue,
+          revenue_delta,
+          quantity,
+          quantity_delta
+      from
+          (select
+              commodity_uuid,
+              revenue_sum as revenue,
+              ((revenue_sum - prev_revenue_sum)::numeric(12,2)/nullif(prev_revenue_sum::numeric(12,2),0))::numeric(12,3) as revenue_delta,
+              quantity,
+              ((quantity - prev_quantity)::numeric(12,2)/nullif(prev_quantity::numeric(12,2),0))::numeric(12,3) as quantity_delta
+          from
+                  (select 
+                      commodity_uuid, 
+                      sum(sum)::bigint as revenue_sum, 
+                      sum(quantity)::numeric(10,2) as quantity 
+                  from positions 
+                  where 
+                      receipt_uuid in
+                          (select uuid 
+                           from receipts 
+                           where 
+                              datetime between $3 and $4
+                              and store_uuid in ($1:csv)
+                          )
+                  group by commodity_uuid
+                  order by revenue_sum desc
+                  limit $5
+                  offset $6) as sells
+              left join
+                  (select 
+                      commodity_uuid as prev_com_uuid, 
+                      sum(sum)::bigint as prev_revenue_sum, 
+                      sum(quantity)::numeric(10,2) as prev_quantity 
+                  from positions 
+                  where 
+                      receipt_uuid in
+                          (select uuid 
+                           from receipts 
+                           where 
+                              datetime between $2 and $3
+                              and store_uuid in ($1:csv)
+                          )
+                  group by commodity_uuid) as prev_sells
+              on prev_sells.prev_com_uuid=sells.commodity_uuid) as whole_sales
+          inner join commodities
+          on commodities.uuid=whole_sales.commodity_uuid
+      order by revenue desc
+    `;
+    return this.exactOrAllStores(clientId, storeUuid).then(storeUuids =>
+      db
+        .manyOrNone(query, [storeUuids, previous, from, to, limit, offset])
+        .then(resultList =>
+          Promise.resolve(
+            _.map(resultList, item => {
+              item.revenue = _.toInteger(item.revenue);
+              item.revenue_delta = _.toNumber(item.revenue_delta);
+              item.quantity = _.toInteger(item.quantity);
+              item.quantity_delta = _.toNumber(item.quantity_delta);
+              return item;
+            })
+          )
+        )
+    );
+  }
 };
