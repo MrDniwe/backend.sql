@@ -14,10 +14,11 @@ module.exports = req => {
     )
     .then(() => {
       req.payload.quantityBars = _.toInteger(req.payload.quantityBars) || 7;
-      return Promise.all([Promise.resolve("sales")]).spread(sales =>
-        Promise.resolve({
-          sales
-        })
+      return models.receipts.receiptsByPriceDiapasons(
+        req.payload.id,
+        req.payload.from,
+        req.payload.to,
+        req.payload.quantityBars
       );
     })
     .catch(err => {
