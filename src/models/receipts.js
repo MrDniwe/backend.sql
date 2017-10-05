@@ -102,7 +102,8 @@ module.exports = class Receipts extends Parent {
       where 
         datetime between $[from] and $[to] 
         and store_uuid in (select uuid from stores where client_id=$[clientId]) 
-      group by date_part('isodow', datetime);`,
+      group by date_part('isodow', datetime)
+      order by date_part`,
         {
           from: moment(dateFrom).toISOString(),
           to: moment(dateTo).toISOString(),

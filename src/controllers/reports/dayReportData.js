@@ -11,19 +11,13 @@ module.exports = req => {
     .then(() =>
       constraints.clientFromTo(req.payload.id, req.payload.from, req.payload.to)
     )
-    .then(() => {
-      return Promise.all([
-        models.receipts.receiptsAvgAndQuantityByDaysOfWeek(
-          req.payload.id,
-          req.payload.from,
-          req.payload.to
-        )
-      ]).spread(data =>
-        Promise.resolve({
-          data
-        })
-      );
-    })
+    .then(() =>
+      models.receipts.receiptsAvgAndQuantityByDaysOfWeek(
+        req.payload.id,
+        req.payload.from,
+        req.payload.to
+      )
+    )
     .catch(err => {
       console.error(err);
       return Promise.reject(err);
