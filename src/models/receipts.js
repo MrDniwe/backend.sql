@@ -202,14 +202,17 @@ module.exports = class Receipts extends Parent {
       .catch(console.error);
   }
 
-  receiptsByPriceDiapasons(clientId, dateFrom, dateTo) {
+  receiptsByPriceDiapasons(clientId, dateFrom, dateTo, diapasons) {
     return constraints
       .clientFromTo(clientId, dateFrom, dateTo)
       .spread((clientId, dateFrom, dateTo) =>
         this.maxReceiptSum(clientId, dateFrom, dateTo)
           .then(receipt => Promise.resolve(receipt.max))
           .then(max => {
-            let diapasonArray = Receipts.createDiapasonArr(7, max || 7000);
+            let diapasonArray = Receipts.createDiapasonArr(
+              diapasons || 7,
+              max || 7000
+            );
             return Promise.map(diapasonArray, diapason =>
               this.receiptDiapasonCount(
                 clientId,
