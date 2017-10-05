@@ -20,7 +20,15 @@ module.exports = req => {
           req.payload.from,
           req.payload.to
         ),
-        Promise.resolve("goods")
+        models.stores.clientStoresSellsList(
+          req.payload.id,
+          req.payload.storeUuid,
+          previous,
+          req.payload.from,
+          req.payload.to,
+          req.payload.limit,
+          req.payload.offset
+        )
       ]).spread((total, goods) =>
         Promise.resolve({
           total,
