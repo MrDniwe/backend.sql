@@ -20,7 +20,13 @@ module.exports = req => {
           req.payload.from,
           req.payload.to
         ),
-        Promise.resolve("goodsData"),
+        models.positions.topSalesForEachClientsStore(
+          req.payload.id,
+          previous,
+          req.payload.from,
+          req.payload.to,
+          5
+        ),
         models.receipts.receiptsByTimeDiapasonListAndClientId(
           req.payload.id,
           req.payload.periods

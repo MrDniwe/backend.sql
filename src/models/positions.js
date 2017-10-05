@@ -80,7 +80,7 @@ module.exports = class Positions extends Parent {
           on commodities.uuid=whole_sales.commodity_uuid
       order by revenue desc
     `;
-    db
+    return db
       .manyOrNone(query, { storeUuid, previous, from, to, limit, offset })
       .then(resultList =>
         Promise.resolve(
@@ -93,5 +93,23 @@ module.exports = class Positions extends Parent {
           })
         )
       );
+  }
+  topSalesForEachClientsStore(clientId, previous, from, to, limit, offset) {
+    const query = `select uuid, title from stores where client_id=$[clientId]`;
+    return db.manyOrNone(query, { clientId }).then(stores =>
+      Promise.map(stores, store =>
+        this.topSalesByStoreWithDelta(
+          store.uuid,
+          previous,
+          from,
+          to,
+          limit,
+          offset
+        ).then(sales => {
+          store.sales = sales;
+          return Promise.resolve(store);
+        })
+      )
+    );
   }
 };
