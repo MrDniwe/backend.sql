@@ -2,6 +2,7 @@ const models = require("../../models/_models");
 const constraints = require("../../constraints");
 const Promise = require("bluebird");
 const helpers = require("../../libs/helpers");
+const _ = require("lodash");
 
 module.exports = req => {
   return Promise.all([
@@ -13,9 +14,24 @@ module.exports = req => {
     )
     .then(() => {
       let previous = helpers.previousFromPayload(req.payload);
+      req.payload.pieChartLimit = _.toInteger(req.payload.pieChartLimit) || 9;
       return Promise.all([
-        Promise.resolve("barchart"),
-        Promise.resolve("piechart")
+        models.stores
+          .exactOrAllStores(req.payload.id, req.payload.storeUuid)
+          .then(storeUuids =>
+            models.receipts.receiptsByTimeDiapasonListAndGivenStores(
+              req.payload.periods,
+              storeUuids
+            )
+          ),
+        models.stores.clientStoresSellsList(
+          req.payload.id,
+          req.payload.storeUuid,
+          previous,
+          req.payload.from,
+          req.payload.to,
+          req.payload.pieChartLimit
+        )
       ]).spread((barchart, piechart) =>
         Promise.resolve({
           barchart,
