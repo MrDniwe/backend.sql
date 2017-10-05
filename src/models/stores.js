@@ -39,7 +39,8 @@ module.exports = class Stores extends Parent {
   }
   receiptsDataWithDelta(clientId, previous, from, to) {
     let query = `
-      select 
+      select
+        uuid, 
         title, 
         current_revenue as revenue, 
         revenue_delta, 
