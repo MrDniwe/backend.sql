@@ -83,6 +83,20 @@ module.exports = class Stores extends Parent {
           on current.store_uuid = previous.p_store_uuid) as united 
       inner join (select uuid, title from stores) as stores
       on united.store_uuid = stores.uuid`;
-    return db.manyOrNone(query, { clientId, previous, from, to });
+    return db
+      .manyOrNone(query, { clientId, previous, from, to })
+      .then(resultList =>
+        Promise.resolve(
+          _.map(resultList, item => {
+            item.revenue = _.toInteger(item.revenue);
+            item.revenue_delta = _.toNumber(item.revenue_delta);
+            item.avg_receipt_delta = _.toNumber(item.avg_receipt_delta);
+            item.receipts = _.toInteger(item.receipts);
+            item.receipts_delta = _.toNumber(item.receipts_delta);
+            return item;
+          })
+        )
+      );
+    //TODO приведение типов
   }
 };
