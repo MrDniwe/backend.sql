@@ -97,6 +97,5 @@ module.exports = class Stores extends Parent {
           })
         )
       );
-    //TODO приведение типов
   }
 };
