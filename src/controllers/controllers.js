@@ -19,7 +19,8 @@ module.exports = {
     storesGoodsReportData: require("./reports/storesGoodsReportData"),
     goodsReportData: require("./reports/goodsReportData"),
     salesReportData: require("./reports/salesReportData"),
-    dayReportData: require("./reports/dayReportData")
+    dayReportData: require("./reports/dayReportData"),
+    sessionReportData: require("./reports/sessionReportData")
   },
   schedule: {
     populateSchedule: require("./schedule/populateSchedule"),
