@@ -26,7 +26,9 @@ module.exports = class Days extends Parent {
         )
       );
     item.uuid = uuidv4();
-    item.is_temporary = moment().utc().isSameOrBefore(item.loaded_day);
+    item.is_temporary =
+      moment().utc().format("YYYY-MM-DD") ===
+      moment(item.loaded_day).format("YYYY-MM-DD");
     return db
       .none(this.queries.upsert, item)
       .then(() =>
