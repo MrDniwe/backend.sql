@@ -1,7 +1,8 @@
 module.exports = {
   clients: {
     clearClientsRelations: require("./client/clearClientsRelations"),
-    upsertClientWithBasicRelations: require("./client/upsertClientWithBasicRelations")
+    upsertClientWithBasicRelations: require("./client/upsertClientWithBasicRelations"),
+    getStores: require("./client/getStores")
   },
   sells: {
     loadSells: require("./sells/loadSells"),
