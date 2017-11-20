@@ -6,7 +6,7 @@ create table clients (
 );
 create table stores (
     uuid uuid primary key,
-    client_id character varying(255), references clients (id) on delete cascade,
+    client_id character varying(255) references clients (id) on delete cascade,
     title character varying(255),
     address character varying(255),
     created timestamp with time zone default current_timestamp,
@@ -14,7 +14,7 @@ create table stores (
 );
 create table employees (
     uuid uuid primary key,
-    client_id character varying(255), references clients (id) on delete cascade,
+    client_id character varying(255) references clients (id) on delete cascade,
     first_name character varying(255),
     middle_name character varying(255),
     last_name character varying(255),

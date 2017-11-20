@@ -119,4 +119,30 @@ module.exports = class Schedule extends Parent {
       [date, type, storeUuid]
     );
   }
+  async countLoadedDays(clientId, from, to, storeUuid) {
+    if (!(moment(from).isValid() && moment(to).isValid() && clientId))
+      return Promise.reject(
+        new Error(
+          "Недостаточно параметоров для подсчета количества загруженных дней"
+        )
+      );
+    let stores;
+    if (storeUuid) stores = [storeUuid];
+    else {
+      let strs = await db.many(
+        "select * from stores where client_id=$1",
+        clientId
+      );
+      stores = _.map(strs, "uuid");
+    }
+    const query = `
+      select count(*) from 
+        (select count(*) from loaded_days 
+        where 
+          store_uuid in ($1:csv) 
+          and loaded_day between $2 and $3 
+          group by loaded_day
+        ) as days`;
+    return await db.one(query, [stores, from, to]);
+  }
 };

@@ -22,10 +22,7 @@ module.exports = {
       return Promise.reject(new Error("Не валидная начальная дата"));
     if (!dateTo || !moment(dateTo).isValid() || dateTo <= dateFrom)
       return Promise.reject(new Error("Не валидная конечная дата"));
-    if (!clientId)
-      return Promise.reject(
-        new Error("Отсутсвует ID клиента в методе получения чеков по магазинам")
-      );
+    if (!clientId) return Promise.reject(new Error("Отсутсвует ID клиента"));
     return Promise.resolve([clientId, dateFrom, dateTo]);
   }
 };

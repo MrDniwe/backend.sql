@@ -43,6 +43,8 @@ cote.dbResponder.on("populateSchedule", controllers.schedule.populateSchedule);
 
 cote.dbResponder.on("clientStores", controllers.clients.getStores);
 
+cote.dbResponder.on("dataAvailability", controllers.clients.dataAvailability);
+
 setInterval(() => {
   controllers.schedule
     .populateSchedule()
